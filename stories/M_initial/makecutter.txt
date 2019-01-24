@@ -1,0 +1,14 @@
+// make a cookie cutter from a provided shape and specifications
+// (I use a similar openscad program reasonably often)
+
+
+makecutter (shape: Drawing2D, scale, thickness, overhang, depth) -> Object {
+    sketch = Paste2D(Plane::XY);
+    outline = sketch.stamp(shape, Transform::I); // place the shape in a sketch
+    sketch.bubble(outline, thickness/2); // expand the paths
+    sketch.bubble(outline, thickness/2 + overhang);
+    obj_list = extrude(sketch.region(R.shell_count({2, 3})), 0, depth);
+    obj_list &= extrude(sketch.region(R.shell_count({1, 4})), 0, thickness);
+    return obj_list.assert_first();
+}
+

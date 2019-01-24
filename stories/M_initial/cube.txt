@@ -1,0 +1,8 @@
+// create a cube object centered on the origin
+
+makecube (sidelength: Number) -> Object {
+    sketch = Paste2D(Plane::XY); // create a sketch context in the XY plane
+    sketch.rect_center(0, 0, sidelength, sidelength); // create a rectangle centered at the origin
+    obj_list = extrude(sketch.region(R.ALL), -sidelength/2, sidelength/2); // extrude the sketch in both directions
+    return obj_list.assert_first(); // return the first object in the list, asserting that the list will always have an object there
+}

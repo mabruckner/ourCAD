@@ -1,0 +1,26 @@
+// a fake control panel using the constraint system
+
+make_panel () -> Object {
+    // the rect functions return a box structure that functions as a generic set object, but also has convenient labels for accessing components of the rectangle.
+    box = sketch.rect_corners(0, 0, ~50, ~50); // the "~" marks values as provisional
+    prev_mark = box.bottom_left;
+    last_box = box;
+    for i in 0..20 {
+        cutout = sketch.rect_center(~50, ~50, 20, 5);
+        // constrain the horizontal dispacement between the left outside edge and the cutout.
+        sketch.hdist(box.left, cutout.left, 5);
+        // constrain the vertical displacement between this cutout and the previous one.
+        sketch.vdist(prev_mark, cutout.bottom, 5);
+        prev_mark = cutout.top_left;
+        last_box = cutout;
+    }
+    sketch.vdist(prev_mark, box.top, 5);
+    center = sketch.point(~10, ~10);
+    // make this point the center of the panel
+    sketch.midpoint(sketch.point, box.bottom_left, box.top_right);
+    circ = sketch.circle(~0, ~0, 50); // circle of diameter 50
+    sketch.h({circ.center, center}); // circle is centered horizontally
+    sketch.hdist(circ.edge, box.right, 5); // circle is 5 units from right edge of container
+    sketch.hdist(last_box.right, circ.edge, 5); // circle if 5 units from the rectangular cutouts
+    return extrude(sketch.region(R.shell_count({1}), 0, 5); // extrude 5 units
+}
