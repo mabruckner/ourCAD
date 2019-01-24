@@ -1,0 +1,159 @@
+## How to target specific elements
+- Label each element w/ number and use numbers explicitly
+- target variable specifically
+- target descendants/relations to variables
+- query syntax for finding targets
+- set points for simple geometric shapes (ie square.left is square's left edge, circle.top is point at top of circle, etc)
+
+## What do we return from a function?
+
+
+
+====
+====
+Examples:
+
+# Fileted box
+box = Sketch()
+  .square(length=2)
+  .extrude(dir=Y, length=2)
+
+filleted_box = box
+  .fillet(???)
+
+----
+# Fileted box
+
+def square():
+  line1 = Line(0..0, 0..1)
+  line2 = Line(0..1, 1..1)
+  line3 = Line(1..1, 1..0)
+  line4 = Line(1..0, 0..0)
+  return (line1, line2, line3, line4)
+
+s = square()
+box = Sketch()
+  .add(s)
+  .extrude(dir=Y, length=1)
+
+filleted_box = box.fillet(3, [s.0, s.1, s.2, s.3])
+filleted_box = box.fillet(3, [s, s.direct_descendant_edges])
+
+---
+# Fileted box
+
+s = square()
+box = Sketch()
+  .add(s)
+  .extrude(dir=Y, length=1)
+
+filleted_box = box.fillet(3, [#1, #5, #6, #42, #23])
+
+---
+# Square
+
+l1 = Line().horizontal()
+l2 = Line().horizontal()
+l3 = Line().vertical()
+l4 = Line().vertical()
+
+l1.start.join(l3.start)
+l1.end.join(l4.start)
+l2.start.join(l3.start)
+l2.end.join(l4.start)
+
+l1.length(10mm)
+
+---
+# Box w/ hole in corner
+
+s = square(length=100mm)
+c1 = Circle(r=10mm)
+c1.inside(s)
+c1.dist(s.left, 15mm)
+c1.dist(s.top, 15mm)
+
+---
+# Box w/ hole in corner
+
+s = square(length=100mm)
+c1 = Circle(r=10mm)
+c1.inside(s)
+c1.left.dist(s.left, 5mm)
+c1.top.dist(s.top, 5mm)
+
+Sketch()
+  .add(s)
+  .add(c1)
+  .extrude(10mm)
+
+---
+# Box w/ hole in each corner
+
+s = square(length=100mm)
+sketch = Sketch()
+  .add(s)
+
+for i in range(4):
+  c1 = Circle(r=10mm)
+  c1.inside(s)
+  c1.dist(s.side(i), 5mm)
+  c1.dist(s.side(i+1), 5mm)
+
+sketch.extrude(5)
+
+---
+# Cylinder w/ hole in center
+
+Sketch()
+  .on(@s1)
+  .add(c1: Circle(d=10)) # label c1
+  .extrude(c1, 100mm)
+  .on(@s1) # sketch on surface 1
+  .add(c2: Circle(d=5).center.join(c1.center))
+  .extrude(c2, 100mm, type='subtract')
+
+-----
+Cylinder
+
+on(@X) |
+add(c1: Circle(d=10)) |
+extrude(c1, 100mm)
+
+-----
+Filleted box
+
+on(@X) {
+  add(s1: Square(s=10mm))
+}
+cube = extrude(s1, 10mm)
+fillet(cube.edges)
+
+-----
+Box w/ filleted top
+
+on(@X) -> add(s1: Square(s=10mm))
+cube = extrude(s1, 10mm)
+fillet(cube.findEdges(closest_to=top, num=4))
+
+---
+# Cylinder w/ hole in center
+
+Sketch()
+  .on(@s1) {
+    add(c1: Circle(d=10)) # label c1
+  }
+  .extrude(c1, 100mm)
+  .on(@s1) {
+    add(c2: Circle(d=5).center.join(c1.center))
+  }
+  .extrude(c2, 100mm, type='subtract')
+
+----
+# Cylinder w/ hole in center
+
+Sketch()
+  .on(@s1) -> add(c1: Circle(d=10)) # label c1
+  .extrude(c1, 100mm)
+  .on(@s1) -> add(c2: Circle(d=5).center.join(c1.center))
+  .extrude(c2, 100mm, type='subtract')
