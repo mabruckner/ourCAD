@@ -1,0 +1,16 @@
+## Cube
+
+class Solid:
+  faces: Face[]
+
+class Face:
+  edges: Edge[]3
+  
+class Edge:
+  start: Point
+  end: Point
+
+class Point:
+  x: int
+  y: int
+  z: int
