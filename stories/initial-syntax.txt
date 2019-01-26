@@ -10,6 +10,7 @@ thing = 1
 
 ## Misc
 - comments
+- return statements
 
 ## built-ins
 union(square1, square2)
