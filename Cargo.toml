@@ -1,6 +1,16 @@
 [package]
 name = "ourCAD"
 version = "0.1.0"
-authors = ["Mitchell Bruckner <mbruckner807@gmail.com>"]
+authors = ["Mitchell Bruckner <mbruckner807@gmail.com>", "Ben Doan <ben@bendoan.me>"]
+build = "build.rs"
 
 [dependencies]
+lalrpop-util = "^0.16.0"
+regex = "^0.2.0"
+serde = "^1.0.80"
+serde_derive = "^1.0.80"
+serde_json = "^1.0.32"
+
+
+[build-dependencies]
+lalrpop = "^0.16.0"

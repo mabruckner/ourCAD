@@ -1,0 +1,14 @@
+fn make_box(width) {
+  length = width * 2;
+  height = width + length;
+  return Box(length, width, height);
+}
+
+box0 = make_box(2);
+print(box0);
+
+box = Box(10, 10, 10);
+to_subtract = move(Box(5, 5, 5), 2.5, 2.5, 0);
+box_with_hole = difference(box, to_subtract);
+
+return box_with_hole;
