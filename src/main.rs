@@ -11,6 +11,6 @@ mod solid;
 use solid::*;
 
 fn main() {
-    // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
-    compiler::compile::compile();
+  // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
+  compiler::compile::compile();
 }
