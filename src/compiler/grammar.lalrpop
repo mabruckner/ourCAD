@@ -1,0 +1,64 @@
+grammar;
+
+use std::i32;
+use compiler::ast::{Meta, Expr, Stmt, Operator};
+
+pub Program: Vec<Meta<Stmt>> = <Statement*>;
+
+pub Block: Meta<Stmt> = {
+    <l:@L> "{" <sl: Statement*> "}" => Meta::new(Stmt::Block(sl), l),
+}
+
+pub Statement: Meta<Stmt> = {
+    <Block>,
+    <l:@L> "if" "(" <e: Expr> ")" <s: Statement> => Meta::new(Stmt::If(e, Box::new(s)), l),
+    <l:@L> "return" <e: Expr> ";" => Meta::new(Stmt::Return(e), l),
+    <l:@L> <i: Identifier> "=" <e: Expr> ";" => Meta::new(Stmt::Assign(i, e), l),
+    <l:@L> <e: Expr> ";" => Meta::new(Stmt::Expr(e), l),
+    <l:@L> "fn" <i: Identifier> "(" <is: Comma<Identifier>> ")" <b: Block> => Meta::new(Stmt::Function(i, is, Box::new(b)), l),
+}
+
+pub Expr: Meta<Expr> = {
+    <AddExpr>,
+}
+
+pub AddExpr: Meta<Expr> = {
+    <l:@L> <e1: AddExpr> "+" <e2: MulExpr> => Meta::new(Expr::Binary(Operator::Add, Box::new(e1), Box::new(e2)), l),
+    <l:@L> <e1: AddExpr> "-" <e2: MulExpr> => Meta::new(Expr::Binary(Operator::Subtract, Box::new(e1), Box::new(e2)), l),
+    <MulExpr>,
+}
+
+pub MulExpr: Meta<Expr> = {
+    <l:@L> <e1: MulExpr> "*" <e2: UnaryExpr> => Meta::new(Expr::Binary(Operator::Multiply, Box::new(e1), Box::new(e2)), l),
+    <l:@L> <e1: MulExpr> "/" <e2: UnaryExpr> => Meta::new(Expr::Binary(Operator::Divide, Box::new(e1), Box::new(e2)), l),
+    <l:@L> <e1: MulExpr> "%" <e2: UnaryExpr> => Meta::new(Expr::Binary(Operator::Mod, Box::new(e1), Box::new(e2)), l),
+    <UnaryExpr>,
+}
+
+pub UnaryExpr: Meta<Expr> = {
+    <l:@L> "-" <e1: RootExpr> => Meta::new(Expr::Unary(Operator::Negate, Box::new(e1)), l),
+    <RootExpr>,
+}
+
+pub RootExpr: Meta<Expr> = {
+    <l:@L> <c: Number> => Meta::new(Expr::Number(c), l),
+    <l:@L> <s: r#""[^"]*""#> => Meta::new(Expr::Str(s[1..s.len()-1].to_string()), l),
+    <l:@L> <i: Identifier> => Meta::new(Expr::Identifier(i), l),
+    <l:@L> <i: Identifier> "(" <is: Comma<Expr>> ")" => Meta::new(Expr::FunctionCall(i, is), l),
+    "(" <Expr> ")" => <>,
+}
+
+pub Number: f64 = {
+    "0" => 0.0,
+    r"[1-9][0-9]*\.?[0-9]*" => <>.parse().unwrap(),
+    <s: r"0[0-9]+"> => i32::from_str_radix(&s[1..s.len()], 8).unwrap() as f64,
+    <s: r"0x[1-9a-fA-F][0-9a-fA-F]*"> => i32::from_str_radix(&s[2..s.len()], 16).unwrap() as f64,
+}
+
+pub Identifier: String = {
+    r"[a-zA-Z][a-zA-Z0-9_]*" => <>.to_string(),
+}
+
+Comma<E>: Vec<E> =
+  <v0:(<E> ",")*> <e1:E?> =>
+    v0.into_iter().chain(e1).collect();
