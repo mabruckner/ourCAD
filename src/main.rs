@@ -5,9 +5,16 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
+#[cfg(feature="display")]
+extern crate kiss3d;
+#[cfg(feature="display")]
+extern crate nalgebra;
+
 mod compiler;
 mod solid;
 mod boolean;
+#[cfg(feature="display")]
+mod display;
 
 use solid::*;
 use boolean::*;
@@ -20,11 +27,19 @@ fn test_boolean() {
   };
   println!("{:?}", slice(&outside_box, &test_plane));
   let inside_box = Solid::make_box([1.0, 5.0, 1.0]);
-  println!("{:?}",
-           boolean(&outside_box, &inside_box, Boolean::Difference));
+  let bool_result = boolean(&outside_box, &inside_box, Boolean::Difference);
+  println!("{:?}", bool_result);
+  #[cfg(feature="display")]
+  {
+    /*let mut display = display::KissDisplay::new();
+    display.set(inside_box);
+    display.join();*/
+    display::display(bool_result);
+  }
 }
 
 fn main() {
-  //test_boolean();
   compiler::compile::compile();
+  #[cfg(feature="display")]
+  test_boolean();
 }

@@ -18,11 +18,11 @@ impl Vector {
       .into()
   }
   pub fn len(&self) -> f64 {
-      let mut acc = 0.0;
-      for i in 0..3 {
-          acc += self.c[i] * self.c[i];
-      }
-      acc.sqrt()
+    let mut acc = 0.0;
+    for i in 0..3 {
+      acc += self.c[i] * self.c[i];
+    }
+    acc.sqrt()
   }
 }
 

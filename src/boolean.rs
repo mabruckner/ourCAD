@@ -1,4 +1,5 @@
 use solid::*;
+//use display;
 
 pub enum Boolean {
   Union,
@@ -8,7 +9,8 @@ pub enum Boolean {
 
 pub fn boolean(a: &Solid, b: &Solid, op: Boolean) -> Solid {
   let (a_i, a_o) = cut(a, b);
-  let (b_i, b_o) = cut(a, b);
+  let (b_i, b_o) = cut(b, a);
+  dbg!(&b_i);
   let (mut faces, more_faces) = match op {
     Boolean::Union => (a_o, b_o),
     Boolean::Intersection => (a_i, b_i),
@@ -25,6 +27,7 @@ pub fn cut(target: &Solid, tool: &Solid) -> (Vec<Face>, Vec<Face>) {
     let stamp = slice(tool, &face.plane);
     let o = face_boolean(&face, &stamp, Boolean::Difference);
     let i = face_boolean(&face, &stamp, Boolean::Intersection);
+    //display::quick_display(vec![face.clone(), stamp.clone()]);
     if o.edges.len() > 0 {
       o_faces.push(o);
     }
@@ -47,21 +50,28 @@ fn shatter(target: &Face, tool: &Vec<Edge>) -> Vec<Edge> {
       if f_t.cross(&t_t) == [0.0, 0.0, 0.0].into() {
         // lines are parallel
         //unimplemented!(); // I think this can be handled gracefully.
-        dbg!((f_edge, t_edge));
+        //dbg!((f_edge, t_edge));
       } else {
         // not parallel
-        let t = (f_edge.a - t_edge.a).cross(&t_t) * target.plane.norm;
+        let t = (t_edge.a - f_edge.a).cross(&t_t) * target.plane.norm;
         let t = t / (f_t.cross(&t_t) * target.plane.norm);
         if t < 1.0 - small && t > small {
-          let newpoint = Point { pos: f_edge.a.pos + f_t * t };
-          fragments[i] = Edge {
-            a: f_edge.a,
-            b: newpoint,
-          };
-          fragments.push(Edge {
-            a: newpoint,
-            b: f_edge.b,
-          });
+          //dbg!(t);
+          let pt = f_edge.a.pos + f_t * t;
+          let u = ((pt - t_edge.a.pos) * t_t) / (t_t * t_t);
+          if u < 1.0 + small && u > -small {
+            dbg!((t, u));
+            //display::quick_display(vec![Face{plane: target.plane.clone(), edges: vec![f_edge.clone(), t_edge.clone()]}]);
+            let newpoint = Point { pos: f_edge.a.pos + f_t * t };
+            fragments[i] = Edge {
+              a: f_edge.a,
+              b: newpoint,
+            };
+            fragments.push(Edge {
+              a: newpoint,
+              b: f_edge.b,
+            });
+          }
         }
       }
     }
