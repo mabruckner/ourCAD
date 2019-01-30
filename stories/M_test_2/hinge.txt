@@ -1,0 +1,14 @@
+// a hinge that fits a 40mm M3 screw as an axle
+
+// with pen-like drawing ops
+hinge () -> Object {
+    hole = circle(origin, 3.2);
+    path = Path::start(hole.left - 2X)
+        .arc(origin, ~0.55Tau)
+        .tan_arc(~10Y + origin)
+}
+
+hinge () -> Object {
+    hole = circle(origin, 3.2);
+    thing = arc(origin,);
+}
