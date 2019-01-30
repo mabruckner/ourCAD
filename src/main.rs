@@ -25,6 +25,6 @@ fn test_boolean() {
 }
 
 fn main() {
-  // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
+  //test_boolean();
   compiler::compile::compile();
 }

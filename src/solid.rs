@@ -17,6 +17,13 @@ impl Vector {
      self.c[0] * other.c[1] - self.c[1] * other.c[0]]
       .into()
   }
+  pub fn len(&self) -> f64 {
+      let mut acc = 0.0;
+      for i in 0..3 {
+          acc += self.c[i] * self.c[i];
+      }
+      acc.sqrt()
+  }
 }
 
 impl Mul for Vector {
