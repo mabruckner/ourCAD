@@ -13,11 +13,15 @@ extern crate nalgebra;
 mod compiler;
 mod solid;
 mod boolean;
+mod ops;
+mod format;
 #[cfg(feature="display")]
 mod display;
 
 use solid::*;
-use boolean::*;
+use ops::*;
+
+use std::fs::File;
 
 fn test_boolean() {
   let outside_box = Solid::make_box([2.0, 2.0, 2.0]);
@@ -34,7 +38,13 @@ fn test_boolean() {
     /*let mut display = display::KissDisplay::new();
     display.set(inside_box);
     display.join();*/
-    display::display(bool_result);
+    let tris = triangulate_solid(bool_result.clone());
+    display::quick_display(tris.iter().map(tri_to_face).collect());
+    display::display(bool_result.clone());
+    format::write_stl(&mut File::create("output.stl").unwrap(),
+                      bool_result,
+                      "test output")
+      .unwrap();
   }
 }
 

@@ -7,6 +7,7 @@ build = "build.rs"
 [features]
 default = []
 display = ["kiss3d", "nalgebra"]
+bad_math = []
 
 [dependencies]
 lalrpop-util = "^0.16.0"
