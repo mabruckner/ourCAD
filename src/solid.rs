@@ -2,6 +2,92 @@ use std::ops::{Mul, Add, Sub, Neg};
 
 pub const small: f64 = 0.0001;
 
+#[derive(Copy,Clone, PartialEq, Eq)]
+pub struct Transform {
+  pub cols: [Vector; 4],
+}
+
+impl Transform {
+  pub fn rotate_x(angle: f64) -> Transform {
+    Transform {
+      cols: [[1.0, 0.0, 0.0].into(),
+             [0.0, angle.cos(), angle.sin()].into(),
+             [0.0, -angle.sin(), angle.cos()].into(),
+             [0.0; 3].into()],
+    }
+  }
+}
+
+impl Mul<Vector> for Transform {
+  type Output = Vector;
+  fn mul(self, vec: Vector) -> Vector {
+    let mut acc = [0.0; 3].into();
+    for i in 0..3 {
+      acc = acc + self.cols[i] * vec.c[i];
+    }
+    acc
+  }
+}
+
+impl Mul<Point> for Transform {
+  type Output = Point;
+  fn mul(self, pt: Point) -> Point {
+    Point { pos: self * pt.pos + self.cols[3] }
+  }
+}
+
+impl Mul<Unit> for Transform {
+  type Output = Unit;
+  fn mul(self, unit: Unit) -> Unit {
+    (self * unit.0).into()
+  }
+}
+
+impl Mul for Transform {
+  type Output = Transform;
+  fn mul(self, other: Transform) -> Transform {
+    unimplemented!();
+  }
+}
+
+impl Mul<Edge> for Transform {
+  type Output = Edge;
+  fn mul(self, other: Edge) -> Edge {
+    Edge {
+      a: self * other.a,
+      b: self * other.b,
+    }
+  }
+}
+
+impl Mul<Plane> for Transform {
+  type Output = Plane;
+  fn mul(self, other: Plane) -> Plane {
+    Plane {
+      point: self * other.point,
+      norm: self * other.norm,
+    }
+  }
+}
+
+impl Mul<Face> for Transform {
+  type Output = Face;
+  fn mul(self, other: Face) -> Face {
+    let Face { plane: plane, edges: edges } = other;
+    Face {
+      plane: self * plane,
+      edges: edges.into_iter().map(|x| self * x).collect(),
+    }
+  }
+}
+
+impl Mul<Solid> for Transform {
+  type Output = Solid;
+  fn mul(self, other: Solid) -> Solid {
+    Solid { faces: other.faces.into_iter().map(|x| self * x).collect() }
+  }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Vector {
   pub c: [f64; 3],

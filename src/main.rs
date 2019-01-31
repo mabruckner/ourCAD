@@ -26,7 +26,7 @@ fn test_boolean() {
     norm: Vector::from([1.0, 1.0, 1.0]).into(),
   };
   println!("{:?}", slice(&outside_box, &test_plane));
-  let inside_box = Solid::make_box([1.0, 5.0, 1.0]);
+  let inside_box = Transform::rotate_x(1.0) * Solid::make_box([1.0, 5.0, 1.0]);
   let bool_result = boolean(&outside_box, &inside_box, Boolean::Difference);
   println!("{:?}", bool_result);
   #[cfg(feature="display")]
