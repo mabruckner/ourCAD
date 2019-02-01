@@ -28,10 +28,10 @@ pub fn cut(target: &Solid, tool: &Solid) -> (Vec<Face>, Vec<Face>) {
     let o = face_boolean(&face, &stamp, Boolean::Difference);
     let i = face_boolean(&face, &stamp, Boolean::Intersection);
     //display::quick_display(vec![face.clone(), stamp.clone()]);
-    if o.edges.len() > 0 {
+    if o.loops.len() > 0 {
       o_faces.push(o);
     }
-    if i.edges.len() > 0 {
+    if i.loops.len() > 0 {
       i_faces.push(i);
     }
   }
@@ -40,7 +40,7 @@ pub fn cut(target: &Solid, tool: &Solid) -> (Vec<Face>, Vec<Face>) {
 
 fn shatter(target: &Face, tool: &Vec<Edge>) -> Vec<Edge> {
   // if there's a zero-length edge it might cause problems
-  let mut fragments = target.edges.clone();
+  let mut fragments: Vec<Edge> = target.edges().collect();
   let mut i = 0;
   while i < fragments.len() {
     for t_edge in tool {
@@ -84,8 +84,8 @@ pub fn face_boolean(a: &Face, b: &Face, op: Boolean) -> Face {
   if a.plane != b.plane {
     panic!();
   }
-  let a_fragments = shatter(&a, &b.edges);
-  let b_fragments = shatter(&b, &a.edges);
+  let a_fragments = shatter(&a, &b.edges().collect());
+  let b_fragments = shatter(&b, &a.edges().collect());
   let mut out: Vec<Edge> = Vec::new();
   out.extend(a_fragments.into_iter()
     .filter(|e| match (b.contains(&Point { pos: e.a.pos * 0.5 + e.b.pos * 0.5 }), &op) {
@@ -99,9 +99,14 @@ pub fn face_boolean(a: &Face, b: &Face, op: Boolean) -> Face {
       (x, Boolean::Intersection) |
       (x, Boolean::Difference) => x,
     }));
-  Face {
-    plane: a.plane,
-    edges: out,
+  if let Ok(mut face) = Face::from_edges(out) {
+    face.plane = a.plane;
+    face
+  } else {
+    Face {
+      plane: a.plane,
+      loops: Vec::new(),
+    }
   }
 }
 
@@ -111,7 +116,7 @@ pub fn slice(s: &Solid, p: &Plane) -> Face {
   let mut edges = Vec::new();
   for face in &s.faces {
     let mut points = Vec::new();
-    for edge in &face.edges {
+    for edge in face.edges() {
       let a = edge.a.pos * p.norm;
       let b = edge.b.pos * p.norm;
       let t = (x - a) / (b - a);
@@ -132,8 +137,13 @@ pub fn slice(s: &Solid, p: &Plane) -> Face {
       });
     }
   }
-  Face {
-    plane: *p,
-    edges: edges,
+  if let Ok(mut face) = Face::from_edges(edges) {
+    face.plane = *p;
+    face
+  } else {
+    Face {
+      plane: *p,
+      loops: Vec::new(),
+    }
   }
 }

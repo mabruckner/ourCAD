@@ -10,7 +10,7 @@ pub fn extrude(face: &Face, direction: &Vector) -> Solid {
 pub fn distill(face: &Face) -> (Vec<Point>, Vec<Vec<usize>>) {
   let mut points = Vec::new();
   let mut edges: Vec<(usize, usize)> = Vec::new();
-  for edge in &face.edges {
+  for edge in face.edges() {
     let (mut ida, mut idb) = (None, None);
     for (i, &point) in points.iter().enumerate() {
       if point == edge.a {
@@ -61,18 +61,7 @@ pub fn tri_to_face(tri: &[Point; 3]) -> Face {
       norm: (tri[1] - tri[0]).cross(&(tri[2] - tri[0])).into(),
       point: tri[0],
     },
-    edges: vec![Edge {
-                  a: tri[0],
-                  b: tri[1],
-                },
-                Edge {
-                  a: tri[1],
-                  b: tri[2],
-                },
-                Edge {
-                  a: tri[2],
-                  b: tri[0],
-                }],
+    loops: vec![vec![tri[0], tri[1], tri[2]]],
   }
 }
 

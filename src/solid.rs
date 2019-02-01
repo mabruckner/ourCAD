@@ -73,10 +73,10 @@ impl Mul<Plane> for Transform {
 impl Mul<Face> for Transform {
   type Output = Face;
   fn mul(self, other: Face) -> Face {
-    let Face { plane: plane, edges: edges } = other;
+    let Face { plane: plane, loops: loops } = other;
     Face {
       plane: self * plane,
-      edges: edges.into_iter().map(|x| self * x).collect(),
+      loops: loops.into_iter().map(|l| l.into_iter().map(|x| self * x).collect()).collect(),
     }
   }
 }
@@ -286,11 +286,59 @@ impl Plane {
 impl Eq for Plane {}
 
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Face {
-  pub edges: Vec<Edge>,
+  pub loops: Vec<Vec<Point>>,
   pub plane: Plane,
+}
+
+/// Turns a face into a series of closed edge loops.
+fn distill(face: &Vec<Edge>) -> (Vec<Point>, Vec<Vec<usize>>) {
+  let mut points = Vec::new();
+  let mut edges: Vec<(usize, usize)> = Vec::new();
+  for edge in face {
+    let (mut ida, mut idb) = (None, None);
+    for (i, &point) in points.iter().enumerate() {
+      if point == edge.a {
+        ida = Some(i);
+      }
+      if point == edge.b {
+        idb = Some(i);
+      }
+    }
+    edges.push((ida.unwrap_or_else(|| {
+                  points.push(edge.a);
+                  points.len() - 1
+                }),
+                idb.unwrap_or_else(|| {
+                  points.push(edge.b);
+                  points.len() - 1
+                })));
+  }
+  let mut loops = Vec::new();
+  while edges.len() > 0 {
+
+    let mut chain = {
+      let e = edges.pop().unwrap();
+      vec![e.0, e.1]
+    };
+    while chain[0] != chain[chain.len() - 1] {
+      let t = chain[chain.len() - 1];
+      for i in 0..edges.len() {
+        match edges[i] {
+          (x, idx) | (idx, x) if x == t => {
+            edges.swap_remove(i);
+            chain.push(idx);
+            break;
+          }
+          _ => (),
+        }
+      }
+    }
+    chain.pop();
+    loops.push(chain);
+  }
+  (points, loops)
 }
 
 impl Face {
@@ -322,12 +370,25 @@ impl Face {
           point: edges[0].a,
           norm: u,
         };
+        let (points, loops) = distill(&edges);
         Ok(Face {
           plane: plane,
-          edges: edges,
+          loops: loops.into_iter()
+            .map(|l| l.into_iter().map(|i| points[i].clone()).collect())
+            .collect(),
         })
       }
     }
+  }
+  pub fn edges<'a>(&'a self) -> impl Iterator<Item = Edge> + 'a {
+    (0..self.loops.len()).flat_map(move |i| {
+      (0..self.loops[i].len()).map(move |j| {
+        Edge {
+          a: self.loops[i][j],
+          b: self.loops[i][(j + 1) % self.loops[i].len()],
+        }
+      })
+    })
   }
   /// This has problems! It **will** cause problems! Frustrating problems! Fix it someday!
   pub fn contains(&self, p: &Point) -> bool {
@@ -335,7 +396,7 @@ impl Face {
       return false;
     }
     let mut i_count = 0;
-    for edge in &self.edges {
+    for edge in self.edges() {
       let a = edge.a - self.plane.point;
       let b = edge.b - self.plane.point;
       let p = *p - self.plane.point;

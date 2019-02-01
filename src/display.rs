@@ -44,7 +44,7 @@ impl KissDisplay {
         }
 
         for face in &target.faces {
-          for edge in &face.edges {
+          for edge in face.edges() {
             let (mut a, mut b) = ([0.0; 3], [0.0; 3]);
             for i in 0..3 {
               a[i] = edge.a.pos.c[i] as f32;
