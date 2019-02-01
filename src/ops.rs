@@ -1,6 +1,6 @@
 pub use boolean::*;
-use solid::*;
 use display;
+use solid::*;
 
 pub fn extrude(face: &Face, direction: &Vector) -> Solid {
   unimplemented!();
@@ -20,18 +20,19 @@ pub fn distill(face: &Face) -> (Vec<Point>, Vec<Vec<usize>>) {
         idb = Some(i);
       }
     }
-    edges.push((ida.unwrap_or_else(|| {
-                  points.push(edge.a);
-                  points.len() - 1
-                }),
-                idb.unwrap_or_else(|| {
-                  points.push(edge.b);
-                  points.len() - 1
-                })));
+    edges.push((
+      ida.unwrap_or_else(|| {
+        points.push(edge.a);
+        points.len() - 1
+      }),
+      idb.unwrap_or_else(|| {
+        points.push(edge.b);
+        points.len() - 1
+      }),
+    ));
   }
   let mut loops = Vec::new();
   while edges.len() > 0 {
-
     let mut chain = {
       let e = edges.pop().unwrap();
       vec![e.0, e.1]
@@ -92,7 +93,12 @@ pub fn triangulate_face(face: Face) -> Vec<[Point; 3]> {
       }
       let (a, b) = (points[i], points[j]);
       for &(id1, id2) in &edges {
-        let (d0, d1, d2, d3) = (points[id1] - a, b - points[id1], points[id2] - b, a - points[id2]);
+        let (d0, d1, d2, d3) = (
+          points[id1] - a,
+          b - points[id1],
+          points[id2] - b,
+          a - points[id2],
+        );
         let base = d0.cross(&d1);
         if d1.cross(&d2) * base > 0.0 && d2.cross(&d3) * base > 0.0 && d3.cross(&d0) * base > 0.0 {
           continue 'jloop;
@@ -102,13 +108,13 @@ pub fn triangulate_face(face: Face) -> Vec<[Point; 3]> {
     }
   }
   // this is not good! fix Face::contains soon!
-    #[cfg(feature="bad_math")]
+  #[cfg(feature = "bad_math")]
   let pertubation = [small * 0.01, small * 0.02, small * 0.03].into();
   {
     let mut i = base_edges.len();
     while i < edges.len() {
       let midpoint = points[edges[i].0].pos * 0.5 + points[edges[i].1].pos * 0.5;
-            #[cfg(feature="bad_math")]
+      #[cfg(feature = "bad_math")]
       let midpoint = midpoint + pertubation;
       if !face.contains(&Point { pos: midpoint }) {
         edges.swap_remove(i);
@@ -126,7 +132,6 @@ pub fn triangulate_face(face: Face) -> Vec<[Point; 3]> {
         (x, ad) | (ad, x) if x == i => {
           edges.swap_remove(j);
           adjacent.push(ad);
-
         }
         _ => {
           j += 1;
@@ -144,9 +149,9 @@ pub fn triangulate_face(face: Face) -> Vec<[Point; 3]> {
     }
   }
   /*display::quick_display(vec![Face {
-        edges: edges.into_iter().map(|(a,b)| Edge { a: points[a], b: points[b] }).collect(),
-        plane: face.plane
-    }]);
-    unimplemented!();*/
+      edges: edges.into_iter().map(|(a,b)| Edge { a: points[a], b: points[b] }).collect(),
+      plane: face.plane
+  }]);
+  unimplemented!();*/
   tris
 }

@@ -1,9 +1,9 @@
-use std::thread;
-use std::sync::mpsc;
-use solid::*;
-use kiss3d::window::Window;
 use kiss3d::line_renderer::LineRenderer;
+use kiss3d::window::Window;
 use nalgebra::Point;
+use solid::*;
+use std::sync::mpsc;
+use std::thread;
 
 enum Command {
   Set(Solid),

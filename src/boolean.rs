@@ -20,7 +20,6 @@ pub fn boolean(a: &Solid, b: &Solid, op: Boolean) -> Solid {
   Solid { faces: faces }
 }
 
-
 pub fn cut(target: &Solid, tool: &Solid) -> (Vec<Face>, Vec<Face>) {
   let (mut i_faces, mut o_faces) = (Vec::new(), Vec::new());
   for face in &target.faces {
@@ -62,7 +61,9 @@ fn shatter(target: &Face, tool: &Vec<Edge>) -> Vec<Edge> {
           if u < 1.0 + small && u > -small {
             dbg!((t, u));
             //display::quick_display(vec![Face{plane: target.plane.clone(), edges: vec![f_edge.clone(), t_edge.clone()]}]);
-            let newpoint = Point { pos: f_edge.a.pos + f_t * t };
+            let newpoint = Point {
+              pos: f_edge.a.pos + f_t * t,
+            };
             fragments[i] = Edge {
               a: f_edge.a,
               b: newpoint,
@@ -87,18 +88,28 @@ pub fn face_boolean(a: &Face, b: &Face, op: Boolean) -> Face {
   let a_fragments = shatter(&a, &b.edges().collect());
   let b_fragments = shatter(&b, &a.edges().collect());
   let mut out: Vec<Edge> = Vec::new();
-  out.extend(a_fragments.into_iter()
-    .filter(|e| match (b.contains(&Point { pos: e.a.pos * 0.5 + e.b.pos * 0.5 }), &op) {
+  out.extend(a_fragments.into_iter().filter(|e| {
+    match (
+      b.contains(&Point {
+        pos: e.a.pos * 0.5 + e.b.pos * 0.5,
+      }),
+      &op,
+    ) {
       (x, Boolean::Intersection) => x,
-      (x, Boolean::Union) |
-      (x, Boolean::Difference) => !x,
-    }));
-  out.extend(b_fragments.into_iter()
-    .filter(|e| match (a.contains(&Point { pos: e.a.pos * 0.5 + e.b.pos * 0.5 }), &op) {
+      (x, Boolean::Union) | (x, Boolean::Difference) => !x,
+    }
+  }));
+  out.extend(b_fragments.into_iter().filter(|e| {
+    match (
+      a.contains(&Point {
+        pos: e.a.pos * 0.5 + e.b.pos * 0.5,
+      }),
+      &op,
+    ) {
       (x, Boolean::Union) => !x,
-      (x, Boolean::Intersection) |
-      (x, Boolean::Difference) => x,
-    }));
+      (x, Boolean::Intersection) | (x, Boolean::Difference) => x,
+    }
+  }));
   if let Ok(mut face) = Face::from_edges(out) {
     face.plane = a.plane;
     face
@@ -121,7 +132,9 @@ pub fn slice(s: &Solid, p: &Plane) -> Face {
       let b = edge.b.pos * p.norm;
       let t = (x - a) / (b - a);
       if 0.0 - small < t && t < 1.0 + small {
-        points.push(Point { pos: edge.a.pos * (1.0 - t) + edge.b.pos * t });
+        points.push(Point {
+          pos: edge.a.pos * (1.0 - t) + edge.b.pos * t,
+        });
       }
     }
     let d = p.norm.0.cross(&face.plane.norm.0);

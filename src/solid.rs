@@ -1,8 +1,8 @@
-use std::ops::{Mul, Add, Sub, Neg};
+use std::ops::{Add, Mul, Neg, Sub};
 
 pub const small: f64 = 0.0001;
 
-#[derive(Copy,Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Transform {
   pub cols: [Vector; 4],
 }
@@ -10,10 +10,12 @@ pub struct Transform {
 impl Transform {
   pub fn rotate_x(angle: f64) -> Transform {
     Transform {
-      cols: [[1.0, 0.0, 0.0].into(),
-             [0.0, angle.cos(), angle.sin()].into(),
-             [0.0, -angle.sin(), angle.cos()].into(),
-             [0.0; 3].into()],
+      cols: [
+        [1.0, 0.0, 0.0].into(),
+        [0.0, angle.cos(), angle.sin()].into(),
+        [0.0, -angle.sin(), angle.cos()].into(),
+        [0.0; 3].into(),
+      ],
     }
   }
 }
@@ -32,7 +34,9 @@ impl Mul<Vector> for Transform {
 impl Mul<Point> for Transform {
   type Output = Point;
   fn mul(self, pt: Point) -> Point {
-    Point { pos: self * pt.pos + self.cols[3] }
+    Point {
+      pos: self * pt.pos + self.cols[3],
+    }
   }
 }
 
@@ -73,10 +77,16 @@ impl Mul<Plane> for Transform {
 impl Mul<Face> for Transform {
   type Output = Face;
   fn mul(self, other: Face) -> Face {
-    let Face { plane: plane, loops: loops } = other;
+    let Face {
+      plane: plane,
+      loops: loops,
+    } = other;
     Face {
       plane: self * plane,
-      loops: loops.into_iter().map(|l| l.into_iter().map(|x| self * x).collect()).collect(),
+      loops: loops
+        .into_iter()
+        .map(|l| l.into_iter().map(|x| self * x).collect())
+        .collect(),
     }
   }
 }
@@ -84,7 +94,9 @@ impl Mul<Face> for Transform {
 impl Mul<Solid> for Transform {
   type Output = Solid;
   fn mul(self, other: Solid) -> Solid {
-    Solid { faces: other.faces.into_iter().map(|x| self * x).collect() }
+    Solid {
+      faces: other.faces.into_iter().map(|x| self * x).collect(),
+    }
   }
 }
 
@@ -98,10 +110,12 @@ impl Vector {
     Vector { c: c }
   }
   pub fn cross(&self, other: &Vector) -> Self {
-    [self.c[1] * other.c[2] - self.c[2] * other.c[1],
-     self.c[2] * other.c[0] - self.c[0] * other.c[2],
-     self.c[0] * other.c[1] - self.c[1] * other.c[0]]
-      .into()
+    [
+      self.c[1] * other.c[2] - self.c[2] * other.c[1],
+      self.c[2] * other.c[0] - self.c[0] * other.c[2],
+      self.c[0] * other.c[1] - self.c[1] * other.c[0],
+    ]
+    .into()
   }
   pub fn len(&self) -> f64 {
     let mut acc = 0.0;
@@ -224,7 +238,9 @@ pub struct Point {
 
 impl Point {
   pub fn new(p: [f64; 3]) -> Self {
-    Point { pos: Vector::new(p) }
+    Point {
+      pos: Vector::new(p),
+    }
   }
 }
 
@@ -277,14 +293,15 @@ impl Plane {
   }
   pub fn translate(&self, offset: Vector) -> Plane {
     Plane {
-      point: Point { pos: self.point.pos + offset },
+      point: Point {
+        pos: self.point.pos + offset,
+      },
       norm: self.norm,
     }
   }
 }
 
 impl Eq for Plane {}
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Face {
@@ -306,18 +323,19 @@ fn distill(face: &Vec<Edge>) -> (Vec<Point>, Vec<Vec<usize>>) {
         idb = Some(i);
       }
     }
-    edges.push((ida.unwrap_or_else(|| {
-                  points.push(edge.a);
-                  points.len() - 1
-                }),
-                idb.unwrap_or_else(|| {
-                  points.push(edge.b);
-                  points.len() - 1
-                })));
+    edges.push((
+      ida.unwrap_or_else(|| {
+        points.push(edge.a);
+        points.len() - 1
+      }),
+      idb.unwrap_or_else(|| {
+        points.push(edge.b);
+        points.len() - 1
+      }),
+    ));
   }
   let mut loops = Vec::new();
   while edges.len() > 0 {
-
     let mut chain = {
       let e = edges.pop().unwrap();
       vec![e.0, e.1]
@@ -373,7 +391,8 @@ impl Face {
         let (points, loops) = distill(&edges);
         Ok(Face {
           plane: plane,
-          loops: loops.into_iter()
+          loops: loops
+            .into_iter()
             .map(|l| l.into_iter().map(|i| points[i].clone()).collect())
             .collect(),
         })
@@ -382,11 +401,9 @@ impl Face {
   }
   pub fn edges<'a>(&'a self) -> impl Iterator<Item = Edge> + 'a {
     (0..self.loops.len()).flat_map(move |i| {
-      (0..self.loops[i].len()).map(move |j| {
-        Edge {
-          a: self.loops[i][j],
-          b: self.loops[i][(j + 1) % self.loops[i].len()],
-        }
+      (0..self.loops[i].len()).map(move |j| Edge {
+        a: self.loops[i][j],
+        b: self.loops[i][(j + 1) % self.loops[i].len()],
       })
     })
   }
@@ -420,45 +437,49 @@ impl Solid {
   pub fn make_box(size: [f64; 3]) -> Self {
     let s1 = [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0];
     let s2 = [-size[0] / 2.0, -size[1] / 2.0, -size[2] / 2.0];
-    let p = vec![[s1[0], s1[1], s1[2]],
-                 [s1[0], s1[1], s2[2]],
-                 [s1[0], s2[1], s1[2]],
-                 [s1[0], s2[1], s2[2]],
-                 [s2[0], s1[1], s1[2]],
-                 [s2[0], s1[1], s2[2]],
-                 [s2[0], s2[1], s1[2]],
-                 [s2[0], s2[1], s2[2]]]
-      .into_iter()
-      .map(|x| Point::new(x))
-      .collect::<Vec<Point>>();
+    let p = vec![
+      [s1[0], s1[1], s1[2]],
+      [s1[0], s1[1], s2[2]],
+      [s1[0], s2[1], s1[2]],
+      [s1[0], s2[1], s2[2]],
+      [s2[0], s1[1], s1[2]],
+      [s2[0], s1[1], s2[2]],
+      [s2[0], s2[1], s1[2]],
+      [s2[0], s2[1], s2[2]],
+    ]
+    .into_iter()
+    .map(|x| Point::new(x))
+    .collect::<Vec<Point>>();
 
-    let e = vec![(p[0], p[1]),
-                 (p[2], p[3]),
-                 (p[4], p[5]),
-                 (p[6], p[7]),
+    let e = vec![
+      (p[0], p[1]),
+      (p[2], p[3]),
+      (p[4], p[5]),
+      (p[6], p[7]),
+      (p[0], p[2]),
+      (p[1], p[3]),
+      (p[4], p[6]),
+      (p[5], p[7]),
+      (p[0], p[4]),
+      (p[1], p[5]),
+      (p[2], p[6]),
+      (p[3], p[7]),
+    ]
+    .into_iter()
+    .map(|(a, b)| Edge { a: a, b: b })
+    .collect::<Vec<Edge>>();
 
-                 (p[0], p[2]),
-                 (p[1], p[3]),
-                 (p[4], p[6]),
-                 (p[5], p[7]),
-
-                 (p[0], p[4]),
-                 (p[1], p[5]),
-                 (p[2], p[6]),
-                 (p[3], p[7])]
-      .into_iter()
-      .map(|(a, b)| Edge { a: a, b: b })
-      .collect::<Vec<Edge>>();
-
-    let faces = vec![vec![e[0], e[1], e[4], e[5]],
-                     vec![e[2], e[3], e[6], e[7]],
-                     vec![e[0], e[2], e[8], e[9]],
-                     vec![e[1], e[3], e[10], e[11]],
-                     vec![e[4], e[6], e[8], e[10]],
-                     vec![e[5], e[7], e[9], e[11]]]
-      .into_iter()
-      .map(|x| Face::from_edges(x).unwrap())
-      .collect::<Vec<Face>>();
+    let faces = vec![
+      vec![e[0], e[1], e[4], e[5]],
+      vec![e[2], e[3], e[6], e[7]],
+      vec![e[0], e[2], e[8], e[9]],
+      vec![e[1], e[3], e[10], e[11]],
+      vec![e[4], e[6], e[8], e[10]],
+      vec![e[5], e[7], e[9], e[11]],
+    ]
+    .into_iter()
+    .map(|x| Face::from_edges(x).unwrap())
+    .collect::<Vec<Face>>();
 
     Solid { faces: faces }
   }
