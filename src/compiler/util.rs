@@ -16,7 +16,6 @@ pub fn get_col_line_number(s: &str, byte_offset: usize) -> (i32, i32) {
     }
     col_count += 1
   }
-  println!("ret: {:?}", (byte_offset, counter));
   if byte_offset == counter {
     (col_count, line_count)
   } else {
