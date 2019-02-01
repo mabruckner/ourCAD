@@ -7,7 +7,7 @@ use std::io::BufRead;
 lalrpop_mod!(pub grammar, "/compiler/grammar.rs");
 
 /// Compiles and prints an oc program from stdin
-pub fn compile() {
+pub fn compile() -> Option<Vec<Meta<Stmt>>> {
   let stdin = io::stdin();
   let program_string = stdin
     .lock()
@@ -15,10 +15,7 @@ pub fn compile() {
     .filter_map(|l| l.ok())
     .collect::<Vec<_>>()
     .join("\n");
-
-  if let Some(ast) = parse_program(&program_string) {
-    println!("{}", serde_json::to_string_pretty(&ast).unwrap())
-  }
+  parse_program(&program_string)
 }
 
 /// Parses a program and alerts on parse errors

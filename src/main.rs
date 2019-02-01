@@ -16,6 +16,7 @@ mod compiler;
 mod display;
 mod format;
 mod ops;
+mod runtime;
 mod solid;
 
 use ops::*;
@@ -53,7 +54,11 @@ fn test_boolean() {
 }
 
 fn main() {
+  if let Some(ast) = compiler::compile::compile() {
+    runtime::Runtime::new().compile(&ast).unwrap();
+  }
   compiler::compile::compile();
   #[cfg(feature = "display")]
   test_boolean();
+  // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
 }

@@ -1,5 +1,5 @@
 pub use boolean::*;
-use display;
+//use display;
 use solid::*;
 
 pub fn extrude(face: &Face, direction: &Vector) -> Solid {

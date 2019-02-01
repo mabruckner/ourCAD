@@ -1,3 +1,3 @@
-mod ast;
+pub mod ast;
 pub mod compile;
-mod util;
+pub mod util;
