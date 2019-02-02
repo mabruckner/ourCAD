@@ -4,10 +4,10 @@ use lalrpop_util::ParseError;
 use std::io;
 use std::io::BufRead;
 
-lalrpop_mod!(pub grammar, "/compiler/grammar.rs");
+lalrpop_mod!(pub grammar, "/parser/grammar.rs");
 
-/// Compiles and prints an oc program from stdin
-pub fn compile() -> Option<Vec<Meta<Stmt>>> {
+/// Parses and prints an oc program from stdin
+pub fn parse() -> Option<Vec<Meta<Stmt>>> {
   let stdin = io::stdin();
   let program_string = stdin
     .lock()

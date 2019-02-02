@@ -1,4 +1,4 @@
-use compiler::ast::{Expr, Meta, Operator, Stmt};
+use parser::ast::{Expr, Meta, Operator, Stmt};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
@@ -57,14 +57,14 @@ impl Runtime {
     }
   }
 
-  pub fn compile(&mut self, program: &Vec<Meta<Stmt>>) -> Result<(), CompilationError> {
+  pub fn run(&mut self, program: &Vec<Meta<Stmt>>) -> Result<(), CompilationError> {
     for stmt in program {
-      self.compile_stmt(stmt)?;
+      self.run_stmt(stmt)?;
     }
     Ok(())
   }
 
-  fn compile_stmt(&mut self, stmt: &Meta<Stmt>) -> Result<(), CompilationError> {
+  fn run_stmt(&mut self, stmt: &Meta<Stmt>) -> Result<(), CompilationError> {
     match stmt.inside {
       Stmt::Block(ref stmts) => self.handle_block(stmts),
       Stmt::Return(ref expr) => self.handle_return(expr),
@@ -80,19 +80,19 @@ impl Runtime {
   fn handle_block(&mut self, stmts: &Vec<Meta<Stmt>>) -> Result<(), CompilationError> {
     self.symbol_table.push(HashMap::new());
     for stmt in stmts {
-      self.compile_stmt(&stmt)?;
+      self.run_stmt(&stmt)?;
     }
     self.symbol_table.pop();
     Ok(())
   }
 
   fn handle_return(&mut self, expr: &Meta<Expr>) -> Result<(), CompilationError> {
-    println!("Returning: {:?}", self.compile_expr(&expr)?);
+    println!("Returning: {:?}", self.run_expr(&expr)?);
     Ok(())
   }
 
   fn handle_expr(&mut self, expr: &Meta<Expr>) -> Result<(), CompilationError> {
-    self.compile_expr(&expr)?;
+    self.run_expr(&expr)?;
     Ok(())
   }
 
@@ -101,7 +101,7 @@ impl Runtime {
     identifier: String,
     expr: &Meta<Expr>,
   ) -> Result<(), CompilationError> {
-    let val = self.compile_expr(&expr)?;
+    let val = self.run_expr(&expr)?;
     if let Some(table_for_scope) = self.symbol_table.last_mut() {
       table_for_scope.insert(
         identifier.clone(),
@@ -132,7 +132,7 @@ impl Runtime {
     Ok(())
   }
 
-  fn compile_expr(&mut self, expr: &Meta<Expr>) -> Result<Object, CompilationError> {
+  fn run_expr(&mut self, expr: &Meta<Expr>) -> Result<Object, CompilationError> {
     match expr.inside {
       Expr::Binary(ref op, ref e1, ref e2) => self.handle_binary(op, e1, e2),
       Expr::Unary(ref op, ref e1) => self.handle_unary(op, e1),
@@ -149,8 +149,8 @@ impl Runtime {
     expr1: &Meta<Expr>,
     expr2: &Meta<Expr>,
   ) -> Result<Object, CompilationError> {
-    let e1_val = self.compile_expr(&expr1)?;
-    let e2_val = self.compile_expr(&expr2)?;
+    let e1_val = self.run_expr(&expr1)?;
+    let e2_val = self.run_expr(&expr2)?;
     let result = match operator {
       Operator::Multiply => e1_val * e2_val,
       Operator::Divide => e1_val / e2_val,
@@ -167,7 +167,7 @@ impl Runtime {
     operator: &Operator,
     expr1: &Meta<Expr>,
   ) -> Result<Object, CompilationError> {
-    let e1_val = self.compile_expr(&expr1)?;
+    let e1_val = self.run_expr(&expr1)?;
     let result = match operator {
       Operator::Negate => -e1_val,
       _ => 0.0, // TODO: error
@@ -185,7 +185,7 @@ impl Runtime {
         SymbolVal::Function(ref params, ref stmt) => {
           // load params into symbol table
           for (i, expr) in exprs.iter().enumerate() {
-            let expr_val = self.compile_expr(expr)?;
+            let expr_val = self.run_expr(expr)?;
             if let Some(table_for_scope) = self.symbol_table.last_mut() {
               table_for_scope.insert(
                 identifier.clone(),
@@ -196,7 +196,7 @@ impl Runtime {
               );
             }
           }
-          self.compile_stmt(stmt)?;
+          self.run_stmt(stmt)?;
           Ok(0.0)
         }
         SymbolVal::StdLib(ref name) => Ok(0.0),

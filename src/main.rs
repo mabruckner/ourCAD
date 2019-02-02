@@ -11,11 +11,11 @@ extern crate kiss3d;
 extern crate nalgebra;
 
 mod boolean;
-mod compiler;
 #[cfg(feature = "display")]
 mod display;
 mod format;
 mod ops;
+mod parser;
 mod runtime;
 mod solid;
 
@@ -54,10 +54,9 @@ fn test_boolean() {
 }
 
 fn main() {
-  if let Some(ast) = compiler::compile::compile() {
-    runtime::Runtime::new().compile(&ast).unwrap();
+  if let Some(ast) = parser::parse::parse() {
+    runtime::Runtime::new().run(&ast).unwrap();
   }
-  compiler::compile::compile();
   #[cfg(feature = "display")]
   test_boolean();
   // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));

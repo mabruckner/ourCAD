@@ -1,7 +1,7 @@
 grammar;
 
 use std::i32;
-use compiler::ast::{Meta, Expr, Stmt, Operator};
+use parser::ast::{Meta, Expr, Stmt, Operator};
 
 pub Program: Vec<Meta<Stmt>> = <Statement*>;
 
