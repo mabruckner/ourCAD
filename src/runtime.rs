@@ -2,8 +2,9 @@ use parser::ast::{Expr, Meta, Operator, Stmt};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use stdlib;
 
-type Object = f64;
+pub type Object = f64;
 
 #[derive(Debug, Clone)]
 pub struct CompilationError {
@@ -48,16 +49,19 @@ pub struct SymbolEntry {
 
 pub struct Runtime {
   symbol_table: Vec<HashMap<String, SymbolEntry>>,
+  std_lib_functions: Vec<&'static str>,
 }
 
 impl Runtime {
   pub fn new() -> Runtime {
     Runtime {
       symbol_table: vec![HashMap::new()],
+      std_lib_functions: vec!["print"],
     }
   }
 
   pub fn run(&mut self, program: &Vec<Meta<Stmt>>) -> Result<(), CompilationError> {
+    self.add_stdlib();
     for stmt in program {
       self.run_stmt(stmt)?;
     }
@@ -199,11 +203,17 @@ impl Runtime {
           self.run_stmt(stmt)?;
           Ok(0.0)
         }
-        SymbolVal::StdLib(ref name) => Ok(0.0),
-        SymbolVal::Object(Object) => Ok(0.0), // TODO: error
+        SymbolVal::StdLib(ref name) => {
+          let mut evaled_args = vec![];
+          for expr in exprs {
+            evaled_args.push(self.run_expr(expr)?);
+          }
+          Ok(self.run_stdlib_function(name, evaled_args))
+        }
+        SymbolVal::Object(object) => Ok(0.0),
       }
     } else {
-      Ok(0.0)
+      Ok(0.0) // TODO: error, function not found
     };
     result
   }
@@ -220,6 +230,28 @@ impl Runtime {
 
   fn handle_number(&mut self, num: Object) -> Result<Object, CompilationError> {
     Ok(num)
+  }
+
+  fn run_stdlib_function(&self, function_name: &str, args: Vec<Object>) -> Object {
+    let result = match function_name {
+      "print" => stdlib::print(args),
+      _ => None, // TODO: error, no function
+    };
+
+    result.unwrap_or(0.0)
+  }
+
+  fn add_stdlib(&mut self) {
+    let toplevel = self.symbol_table.get_mut(0).unwrap();
+    for std_lib_function in self.std_lib_functions.clone() {
+      toplevel.insert(
+        std_lib_function.to_string(),
+        SymbolEntry {
+          name: std_lib_function.to_string(),
+          value: SymbolVal::StdLib(std_lib_function.to_string()),
+        },
+      );
+    }
   }
 }
 

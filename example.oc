@@ -5,7 +5,7 @@ fn make_box(width) {
 }
 
 box0 = make_box(2);
-print(box0);
+print(45);
 
 box = Box(10, 10, 10);
 to_subtract = move(Box(5, 5, 5), 2.5, 2.5, 0);

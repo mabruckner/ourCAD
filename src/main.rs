@@ -2,6 +2,7 @@
 extern crate lalrpop_util;
 #[macro_use]
 extern crate serde_derive;
+extern crate clap;
 extern crate serde;
 extern crate serde_json;
 
@@ -18,10 +19,12 @@ mod ops;
 mod parser;
 mod runtime;
 mod solid;
+mod stdlib;
 
 use ops::*;
 use solid::*;
 
+use clap::{App, Arg, SubCommand};
 use std::fs::File;
 
 fn test_boolean() {
