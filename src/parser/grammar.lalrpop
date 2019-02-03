@@ -12,10 +12,15 @@ pub Block: Meta<Stmt> = {
 pub Statement: Meta<Stmt> = {
     <Block>,
     <l:@L> "if" "(" <e: Expr> ")" <s: Statement> => Meta::new(Stmt::If(e, Box::new(s)), l),
+    <l:@L> "for" "(" <a: Assignment> ";" <e: Expr> ";" <i: Assignment> ")" <s: Statement> => Meta::new(Stmt::For(Box::new(a), e, Box::new(i), Box::new(s)), l),
     <l:@L> "return" <e: Expr> ";" => Meta::new(Stmt::Return(e), l),
-    <l:@L> <i: Identifier> "=" <e: Expr> ";" => Meta::new(Stmt::Assign(i, e), l),
+    <l:@L> <a: Assignment> ";" => a,
     <l:@L> <e: Expr> ";" => Meta::new(Stmt::Expr(e), l),
     <l:@L> "fn" <i: Identifier> "(" <is: Comma<Identifier>> ")" <b: Block> => Meta::new(Stmt::Function(i, is, Box::new(b)), l),
+}
+
+pub Assignment: Meta<Stmt> = {
+    <l:@L> <i: Identifier> "=" <e: Expr> => Meta::new(Stmt::Assign(i, e), l),
 }
 
 pub Expr: Meta<Expr> = {

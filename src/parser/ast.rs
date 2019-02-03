@@ -29,6 +29,12 @@ pub enum Expr {
 pub enum Stmt {
   Block(Vec<Meta<Stmt>>),
   If(Meta<Expr>, Box<Meta<Stmt>>),
+  For(
+    Box<Meta<Stmt>>,
+    Meta<Expr>,
+    Box<Meta<Stmt>>,
+    Box<Meta<Stmt>>,
+  ),
   Return(Meta<Expr>),
   Expr(Meta<Expr>),
   Function(String, Vec<String>, Box<Meta<Stmt>>),

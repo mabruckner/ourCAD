@@ -77,8 +77,40 @@ impl Runtime {
       Stmt::Function(ref identifier, ref param, ref stmt) => {
         self.handle_function(identifier.to_string(), param, stmt)
       }
+      Stmt::For(ref assign, ref condition, ref inc, ref body) => {
+        self.handle_for(assign, condition, inc, body)
+      }
+      Stmt::If(ref condition, ref body) => self.handle_if(condition, body),
       _ => Ok(()),
     }
+  }
+
+  fn handle_for(
+    &mut self,
+    assign: &Meta<Stmt>,
+    cond: &Meta<Expr>,
+    inc: &Meta<Stmt>,
+    body: &Meta<Stmt>,
+  ) -> Result<(), CompilationError> {
+    self.symbol_table.push(HashMap::new());
+    self.run_stmt(assign)?;
+    while self.run_expr(cond)? > 0.0 {
+      self.symbol_table.push(HashMap::new());
+      self.run_stmt(body)?;
+      self.symbol_table.pop();
+      self.run_stmt(inc)?;
+    }
+    self.symbol_table.pop();
+    Ok(())
+  }
+
+  fn handle_if(&mut self, cond: &Meta<Expr>, body: &Meta<Stmt>) -> Result<(), CompilationError> {
+    if self.run_expr(cond)? > 0.0 {
+      self.symbol_table.push(HashMap::new());
+      self.run_stmt(body)?;
+      self.symbol_table.pop();
+    }
+    Ok(())
   }
 
   fn handle_block(&mut self, stmts: &Vec<Meta<Stmt>>) -> Result<(), CompilationError> {
