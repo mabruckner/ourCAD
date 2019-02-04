@@ -1,6 +1,41 @@
-use std::ops::{Add, Mul, Neg, Sub};
+use display;
+use std::ops::{Add, Mul, Neg, Not, Sub};
 
 pub const small: f64 = 0.0001;
+
+pub enum Tern {
+  Yes,
+  No,
+  Maybe,
+}
+
+impl Tern {
+  pub fn hope(self) -> bool {
+    match self {
+      Yes | Maybe => true,
+      No => false,
+    }
+  }
+  pub fn despair(self) -> bool {
+    match self {
+      Yes => true,
+      Maybe | No => false,
+    }
+  }
+}
+
+impl Not for Tern {
+  type Output = Tern;
+  fn not(self) -> Tern {
+    match self {
+      Yes => No,
+      Maybe => Maybe,
+      No => Yes,
+    }
+  }
+}
+
+use Tern::{Maybe, No, Yes};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Transform {
@@ -220,6 +255,7 @@ impl From<Vector> for Unit {
     for i in 0..3 {
       acc = acc + val.c[i] * val.c[i];
     }
+    acc = acc.sqrt();
     if acc < small {
       println!("ERROR {:?}, {:?}", val, acc);
       panic!();
@@ -341,6 +377,15 @@ fn distill(face: &Vec<Edge>) -> (Vec<Point>, Vec<Vec<usize>>) {
       vec![e.0, e.1]
     };
     while chain[0] != chain[chain.len() - 1] {
+      if edges.len() == 0 {
+        dbg!(face);
+        dbg!(chain);
+        dbg!(loops);
+        dbg!(edges);
+        dbg!(points);
+        display::edge_display(face.clone());
+        panic!();
+      }
       let t = chain[chain.len() - 1];
       for i in 0..edges.len() {
         match edges[i] {
@@ -359,13 +404,91 @@ fn distill(face: &Vec<Edge>) -> (Vec<Point>, Vec<Vec<usize>>) {
   (points, loops)
 }
 
+/// Compute the turn count of a closed polyline. Panics if given less than 2 points.
+fn turns(points: &Vec<Point>, normal: &Unit) -> f64 {
+  // prime the pump
+  let (mut p0, mut p1) = (
+    points.get(points.len() - 2).unwrap(),
+    points.last().unwrap(),
+  );
+  // the angle accumulator
+  let mut acc = 0.0;
+  for p2 in points {
+    // compute deltas
+    let (da, db) = (p1 - p0, p2 - p1);
+    // the x and y here are actually the x and y values of db in a coodinate system rotated so
+    // that da is the x-axis and everything has been scaled by |da|*|db|.
+    let y = normal.0 * da.cross(&db);
+    let x = da * db;
+    // add the angle to the accumulator
+    acc += y.atan2(x);
+    // push the values back
+    p0 = p1;
+    p1 = p2;
+  }
+  // I usually hold that radians are superior. This is a special case, as I don't expect this
+  // number to touch any additional trigonometry.
+  acc / (2.0 * std::f64::consts::PI)
+}
+
+/// Determine if a closed polyline specified by points contains point, and computes the turns about
+/// point with parity defined by normal.
+///
+/// Returns a tuple containing a Tern, with Maybe representing coincidence with an edge or point,
+/// and the turns about the point - information that is potentially informative beyond the
+/// Yes/No/Maybe values.
+///
+/// an even number of turns (positive or negative) implies that the point lies outside the
+/// bounded reigon, understanding that the region is of the xor type - self intersecting loops
+/// inside the body of the polygon form a sort of "courtyard" that we define as outside,
+/// despite being entirely surrounded by the polygon.
+///
+/// if acc differs significanly from an integer it can indicate a worrying loss of precision.
+/// Because of the way the math is structured, this can happen naturally when point approaches
+/// the polygon defined by points, In which case we would expect a Maybe value, indicating
+/// coincidence. If a non-Maybe value and a non-integer turn count are returned together then
+/// something has gone horribly wrong.
+fn contains(points: &Vec<Point>, point: &Point, normal: &Unit) -> (Tern, f64) {
+  // see turns() for a similar function that has been annotated
+  let mut p0 = points.last().unwrap();
+  let mut acc = 0.0;
+  let mut on_edge = false;
+  for p1 in points {
+    let (da, db) = (p0 - point, p1 - point);
+    let y = normal.0 * da.cross(&db);
+    let x = da * db;
+    if y.abs() < small && x < small {
+      on_edge = true;
+    }
+    acc += y.atan2(x);
+  }
+  acc /= std::f64::consts::PI * 2.0;
+  if on_edge {
+    (Maybe, acc)
+  } else {
+    let n = acc.round() as i32;
+    if n % 2 == 0 {
+      (No, acc)
+    } else {
+      (Yes, acc)
+    }
+  }
+}
+
 impl Face {
+  /// Converts a list of edges into a planar face
   pub fn from_edges(edges: Vec<Edge>) -> Result<Face, Vec<Edge>> {
+    // one edge is not enough information to identify a plane and doesn't form a closed loop anyway
     if edges.len() < 2 {
       Err(edges)
     } else {
+      // we start by identifying the plane
+      // TODO: make this section a bit more general - things break if the first edge in the list is
+      // small, for example.
       let a = (edges[0].a.pos - edges[0].b.pos);
       let mut b = (edges[1].a.pos - edges[1].b.pos);
+      // this loop cycles through the edges in order to find one that results in an acceptably
+      // large cross product. Otherwise the plane normal will not be accurate.
       for i in 1..edges.len() {
         b = (edges[i].a.pos - edges[i].b.pos);
         let c = a.cross(&b);
@@ -373,28 +496,67 @@ impl Face {
           break;
         }
       }
-      //println!("{:?} {:?}", a, b);
+      // Compute the normal - this unit vector should be perpendicular to all edges.
       let u: Unit = a.cross(&b).into();
+      // Compute the shortest distance from origin to the plane.
       let x = edges[0].a.pos * u.0;
+      // Find the maximum deviation of a point from the computed plane.
       let mut big = 0.0;
       for e in &edges {
         big = (e.a.pos * u.0 - x).abs().max(big);
         big = (e.b.pos * u.0 - x).abs().max(big);
       }
       if big >= small {
+        // The max deviation is greater than an acceptable value -> edges are not coplanar, an
+        // error.
         Err(edges)
       } else {
+        // make the plane official
         let plane = Plane {
           point: edges[0].a,
           norm: u,
         };
-        let (points, loops) = distill(&edges);
+        // turn the edges into edge loops
+        // TODO: Verify that the edges are actually loops.
+        // TODO: Verify that the edges do not cross.
+        // TODO: Modify the distill function so that loops may not pass over each other by sharing
+        // points.
+        let (points, mut loops) = distill(&edges);
+
+        // make the loop direction consistent; the inside of a shape is always on the left side of
+        // the path.
+        let mut loops: Vec<Vec<Point>> = loops
+          .into_iter()
+          .map(|l| l.into_iter().map(|i| points[i]).collect::<Vec<Point>>())
+          .collect();
+        let mut shell_count: Vec<usize> = loops.iter().map(|_| 0).collect();
+        for i in 0..loops.len() {
+          for j in 0..loops.len() {
+            if i == j {
+              continue;
+            }
+            match contains(&loops[j], &loops[i][0], &u) {
+              (Yes, _) => {
+                shell_count[i] += 1;
+              }
+              (No, _) => (),
+              // TODO handle this better; test other points or something
+              _ => {
+                panic!();
+              }
+            }
+          }
+        }
+        // actually perform the reversals
+        for i in 0..loops.len() {
+          let ccw = turns(&loops[i], &plane.norm) > 0.0;
+          if ccw != (shell_count[i] % 2 == 0) {
+            loops[i].reverse();
+          }
+        }
         Ok(Face {
           plane: plane,
-          loops: loops
-            .into_iter()
-            .map(|l| l.into_iter().map(|i| points[i].clone()).collect())
-            .collect(),
+          loops: loops,
         })
       }
     }
@@ -407,24 +569,43 @@ impl Face {
       })
     })
   }
-  /// This has problems! It **will** cause problems! Frustrating problems! Fix it someday!
-  pub fn contains(&self, p: &Point) -> bool {
+  /// Determine if a Point is contained by this face. Returns No if the point is not coplanar, and
+  /// returns Maybe if the point is on an edge.
+  pub fn contains(&self, p: &Point) -> Tern {
+    dbg!(&p);
+    dbg!(self);
     if !self.plane.intersect_point(p) {
-      return false;
+      return No;
     }
     let mut i_count = 0;
-    for edge in self.edges() {
-      let a = edge.a - self.plane.point;
-      let b = edge.b - self.plane.point;
-      let p = *p - self.plane.point;
-      let ab = a.cross(&b);
-      let ap = a.cross(&p);
-      let pb = p.cross(&b);
-      if (ab * (ap + pb) < ab * ab) && ab * ap > 0.0 && ab * pb > 0.0 {
-        i_count += 1;
+    for l in &self.loops {
+      let mut acc = 0.0;
+      for i in 0..l.len() {
+        let a = l[i];
+        let b = l[(i + 1) % l.len()];
+        let (da, db) = (a - *p, b - *p);
+        let y = self.plane.norm.0 * da.cross(&db);
+        let x = da * db;
+        if y.abs() < small && x < small {
+          return Maybe;
+        }
+        acc += y.atan2(x);
       }
+      acc /= std::f64::consts::PI * 2.0;
+      let n = acc.round() as i32;
+      dbg!(n);
+      dbg!(acc);
+      if (acc - n as f64).abs() > small {
+        // This is a fault - I feel like the panic here is a big much, but until we get a
+        // system for this kind of thing it will have to do.
+        panic!("accumulator error in Face::contains");
+      }
+      i_count += n;
     }
-    i_count % 2 == 1
+    match i_count % 2 == 1 {
+      true => Yes,
+      false => No,
+    }
   }
 }
 

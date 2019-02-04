@@ -57,10 +57,10 @@ fn test_boolean() {
 }
 
 fn main() {
+  #[cfg(feature = "display")]
+  test_boolean();
   if let Some(ast) = parser::parse::parse() {
     runtime::Runtime::new().run(&ast).unwrap();
   }
-  #[cfg(feature = "display")]
-  test_boolean();
   // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
 }

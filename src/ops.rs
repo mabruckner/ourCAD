@@ -76,6 +76,7 @@ pub fn triangulate_solid(solid: Solid) -> Vec<[Point; 3]> {
 
 pub fn triangulate_face(face: Face) -> Vec<[Point; 3]> {
   //display::quick_display(vec![face.clone()]);
+  dbg!(&face);
   let (points, loops) = distill(&face);
   let mut base_edges = Vec::new();
   for chain in loops {
@@ -116,7 +117,7 @@ pub fn triangulate_face(face: Face) -> Vec<[Point; 3]> {
       let midpoint = points[edges[i].0].pos * 0.5 + points[edges[i].1].pos * 0.5;
       #[cfg(feature = "bad_math")]
       let midpoint = midpoint + pertubation;
-      if !face.contains(&Point { pos: midpoint }) {
+      if !face.contains(&Point { pos: midpoint }).despair() {
         edges.swap_remove(i);
         continue;
       }

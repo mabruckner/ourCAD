@@ -88,6 +88,7 @@ pub fn face_boolean(a: &Face, b: &Face, op: Boolean) -> Face {
   let a_fragments = shatter(&a, &b.edges().collect());
   let b_fragments = shatter(&b, &a.edges().collect());
   let mut out: Vec<Edge> = Vec::new();
+  // these hope and despair values are incorrect
   out.extend(a_fragments.into_iter().filter(|e| {
     match (
       b.contains(&Point {
@@ -95,8 +96,8 @@ pub fn face_boolean(a: &Face, b: &Face, op: Boolean) -> Face {
       }),
       &op,
     ) {
-      (x, Boolean::Intersection) => x,
-      (x, Boolean::Union) | (x, Boolean::Difference) => !x,
+      (x, Boolean::Intersection) => x.hope(),
+      (x, Boolean::Union) | (x, Boolean::Difference) => !x.hope(),
     }
   }));
   out.extend(b_fragments.into_iter().filter(|e| {
@@ -106,8 +107,8 @@ pub fn face_boolean(a: &Face, b: &Face, op: Boolean) -> Face {
       }),
       &op,
     ) {
-      (x, Boolean::Union) => !x,
-      (x, Boolean::Intersection) | (x, Boolean::Difference) => x,
+      (x, Boolean::Union) => !x.despair(),
+      (x, Boolean::Intersection) | (x, Boolean::Difference) => x.despair(),
     }
   }));
   if let Ok(mut face) = Face::from_edges(out) {
