@@ -1,3 +1,4 @@
+#[cfg(feature = "display")]
 use display;
 use std::ops::{Add, Mul, Neg, Not, Sub};
 
@@ -383,6 +384,7 @@ fn distill(face: &Vec<Edge>) -> (Vec<Point>, Vec<Vec<usize>>) {
         dbg!(loops);
         dbg!(edges);
         dbg!(points);
+        #[cfg(feature = "display")]
         display::edge_display(face.clone());
         panic!();
       }

@@ -26,6 +26,8 @@ use solid::*;
 
 use clap::{App, Arg, SubCommand};
 use std::fs::File;
+use std::io;
+use std::io::BufRead;
 
 fn test_boolean() {
   let outside_box = Solid::make_box([2.0, 2.0, 2.0]);
@@ -59,8 +61,16 @@ fn test_boolean() {
 fn main() {
   #[cfg(feature = "display")]
   test_boolean();
-  if let Some(ast) = parser::parse::parse() {
-    runtime::Runtime::new().run(&ast).unwrap();
+  let stdin = io::stdin();
+  let program_string = stdin
+    .lock()
+    .lines()
+    .filter_map(|l| l.ok())
+    .collect::<Vec<_>>()
+    .join("\n");
+
+  if let Some(ast) = parser::parse::parse_program(&program_string) {
+    runtime::Runtime::new(program_string).run(&ast).unwrap();
   }
   // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
 }
