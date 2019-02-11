@@ -3,4 +3,5 @@ test_plane = Plane(0, 0, 0);
 inside_box = rotate_x(Box(1, 5, 1), 1);
 
 diff = difference(outside_box, inside_box);
+write_stl(diff);
 display(diff);

@@ -78,6 +78,7 @@ impl Runtime {
         "difference",
         "rotate_x",
         "display",
+        "write_stl",
       ],
       source_code: source_code,
     }
@@ -304,6 +305,7 @@ impl Runtime {
       "difference" => stdlib::std_difference(args),
       "rotate_x" => stdlib::std_rotate_x(args),
       "display" => stdlib::std_display(args),
+      "write_stl" => stdlib::std_write_stl(args),
       _ => self.error(
         format!("Couldn't find stdlib function with name: {}", function_name),
         None,
