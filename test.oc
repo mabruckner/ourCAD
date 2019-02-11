@@ -1,0 +1,6 @@
+outside_box = Box(2, 2, 2);
+test_plane = Plane(0, 0, 0);
+inside_box = rotate_x(Box(1, 5, 1), 1);
+
+diff = difference(outside_box, inside_box);
+display(diff);

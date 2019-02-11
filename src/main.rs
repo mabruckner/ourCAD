@@ -43,24 +43,25 @@ fn test_boolean() {
   println!("{:?}", bool_result);
   #[cfg(feature = "display")]
   {
-    /*let mut display = display::KissDisplay::new();
-    display.set(inside_box);
-    display.join();*/
-    let tris = triangulate_solid(bool_result.clone());
-    display::quick_display(tris.iter().map(tri_to_face).collect());
-    display::display(bool_result.clone());
-    format::write_stl(
-      &mut File::create("output.stl").unwrap(),
-      bool_result,
-      "test output",
-    )
-    .unwrap();
+    display::display(bool_result);
+    // let mut display = display::KissDisplay::new();
+    // display.set(bool_result);
+    // display.join();
+    // let tris = triangulate_solid(bool_result.clone());
+    // display::quick_display(tris.iter().map(tri_to_face).collect());
+    // display::display(bool_result.clone());
+    // format::write_stl(
+    //   &mut File::create("output.stl").unwrap(),
+    //   bool_result,
+    //   "test output",
+    // )
+    // .unwrap();
   }
 }
 
 fn main() {
-  #[cfg(feature = "display")]
-  test_boolean();
+  // #[cfg(feature = "display")]
+  // test_boolean();
   let stdin = io::stdin();
   let program_string = stdin
     .lock()

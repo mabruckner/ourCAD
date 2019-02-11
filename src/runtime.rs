@@ -1,5 +1,6 @@
 use parser::ast::{Expr, Meta, Operator, Stmt};
 use parser::util::get_line_number;
+use solid::{Edge, Face, Plane, Point, Solid, Vector};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
@@ -7,9 +8,15 @@ use stdlib;
 
 const CURRENT_FUNCTION_CALL_KEY: &'static str = "___CURRENT_FUNCTION_CALL";
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Object {
   Number(f64),
+  Point(Point),
+  Edge(Edge),
+  Plane(Plane),
+  Face(Face),
+  Vector(Vector),
+  Solid(Solid),
 }
 
 #[derive(Debug, Clone)]
@@ -39,7 +46,7 @@ impl Error for RuntimeError {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 enum SymbolVal {
   Function(Vec<String>, Meta<Stmt>),
   StdLib(String),
@@ -47,7 +54,7 @@ enum SymbolVal {
   Object(Object),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SymbolEntry {
   name: String,
   value: SymbolVal,
@@ -63,7 +70,15 @@ impl Runtime {
   pub fn new(source_code: String) -> Runtime {
     Runtime {
       symbol_table: vec![HashMap::new()],
-      std_lib_functions: vec!["print", "Box", "move", "difference"],
+      std_lib_functions: vec![
+        "print",
+        "Box",
+        "Plane",
+        "move",
+        "difference",
+        "rotate_x",
+        "display",
+      ],
       source_code: source_code,
     }
   }
@@ -89,7 +104,6 @@ impl Runtime {
         self.handle_for(assign, condition, inc, body)
       }
       Stmt::If(ref condition, ref body) => self.handle_if(condition, body),
-      _ => Ok(()),
     }
   }
 
@@ -284,9 +298,12 @@ impl Runtime {
   ) -> Result<Object, RuntimeError> {
     match function_name {
       "print" => stdlib::std_print(args),
-      "Box" => stdlib::std_box(args),
+      "Box" => stdlib::std_make_box(args),
+      "Plane" => stdlib::std_make_plane(args),
       "move" => stdlib::std_move(args),
       "difference" => stdlib::std_difference(args),
+      "rotate_x" => stdlib::std_rotate_x(args),
+      "display" => stdlib::std_display(args),
       _ => self.error(
         format!("Couldn't find stdlib function with name: {}", function_name),
         None,
@@ -330,12 +347,23 @@ fn get_var<'a>(
   None
 }
 
-fn get_number(object: Object) -> Result<f64, RuntimeError> {
+pub fn get_number(object: Object) -> Result<f64, RuntimeError> {
   if let Object::Number(num) = object {
     Ok(num)
   } else {
     Err(RuntimeError::new(format!(
       "Object is not a number: {:?}",
+      object
+    )))
+  }
+}
+
+pub fn get_solid(object: Object) -> Result<Solid, RuntimeError> {
+  if let Object::Solid(solid) = object {
+    Ok(solid)
+  } else {
+    Err(RuntimeError::new(format!(
+      "Object is not a solid: {:?}",
       object
     )))
   }
