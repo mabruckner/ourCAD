@@ -11,6 +11,7 @@ const CURRENT_FUNCTION_CALL_KEY: &'static str = "___CURRENT_FUNCTION_CALL";
 #[derive(Debug, Clone, PartialEq)]
 pub enum Object {
   Number(f64),
+  Str(String),
   Point(Point),
   Edge(Edge),
   Plane(Plane),
@@ -194,6 +195,7 @@ impl Runtime {
       Expr::FunctionCall(ref name, ref args) => self.handle_function_call(name.to_string(), args),
       Expr::Identifier(ref name) => self.handle_identifier(expr, name),
       Expr::Number(num) => self.handle_number(Object::Number(num)),
+      Expr::Str(ref s) => self.handle_str(Object::Str(s.clone())),
       _ => self.error(
         format!("Couldn't handle expr: {:?}", expr),
         Some(expr.byte_offset),
@@ -292,6 +294,10 @@ impl Runtime {
     Ok(num)
   }
 
+  fn handle_str(&mut self, s: Object) -> Result<Object, RuntimeError> {
+    Ok(s)
+  }
+
   fn run_stdlib_function(
     &self,
     function_name: &str,
@@ -366,6 +372,17 @@ pub fn get_solid(object: Object) -> Result<Solid, RuntimeError> {
   } else {
     Err(RuntimeError::new(format!(
       "Object is not a solid: {:?}",
+      object
+    )))
+  }
+}
+
+pub fn get_str(object: Object) -> Result<String, RuntimeError> {
+  if let Object::Str(solid) = object {
+    Ok(solid)
+  } else {
+    Err(RuntimeError::new(format!(
+      "Object is not a string: {:?}",
       object
     )))
   }

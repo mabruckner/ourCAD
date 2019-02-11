@@ -47,7 +47,7 @@ pub UnaryExpr: Meta<Expr> = {
 
 pub RootExpr: Meta<Expr> = {
     <l:@L> <c: Number> => Meta::new(Expr::Number(c), l),
-    <l:@L> <s: r#""[^"]*""#> => Meta::new(Expr::Str(s[1..s.len()-1].to_string()), l),
+    <l:@L> <s: String> => Meta::new(Expr::Str(s), l),
     <l:@L> <i: Identifier> => Meta::new(Expr::Identifier(i), l),
     <l:@L> <i: Identifier> "(" <is: Comma<Expr>> ")" => Meta::new(Expr::FunctionCall(i, is), l),
     "(" <Expr> ")" => <>,
@@ -58,6 +58,10 @@ pub Number: f64 = {
     r"[1-9][0-9]*\.?[0-9]*" => <>.parse().unwrap(),
     <s: r"0[0-9]+"> => i32::from_str_radix(&s[1..s.len()], 8).unwrap() as f64,
     <s: r"0x[1-9a-fA-F][0-9a-fA-F]*"> => i32::from_str_radix(&s[2..s.len()], 16).unwrap() as f64,
+}
+
+pub String: String = {
+  <l:@L> <s: r#""[^"]*""#> => s[1..s.len()-1].to_string(),
 }
 
 pub Identifier: String = {

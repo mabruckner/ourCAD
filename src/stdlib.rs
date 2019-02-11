@@ -2,7 +2,7 @@ use boolean::{boolean, Boolean};
 #[cfg(feature = "display")]
 use display::display;
 use format::write_stl;
-use runtime::{get_number, get_solid, Object, RuntimeError};
+use runtime::{get_number, get_solid, get_str, Object, RuntimeError};
 use solid::{Plane, Point, Solid, Transform, Vector};
 use std::fs::File;
 
@@ -62,11 +62,7 @@ pub fn std_display(args: Vec<Object>) -> Result<Object, RuntimeError> {
 
 pub fn std_write_stl(args: Vec<Object>) -> Result<Object, RuntimeError> {
   let solid = get_solid(args.get(0).unwrap().clone())?;
-  write_stl(
-    &mut File::create("output.stl").unwrap(),
-    solid,
-    "test output",
-  )
-  .unwrap();
+  let name = get_str(args.get(1).unwrap().clone())?;
+  write_stl(&mut File::create(&name).unwrap(), solid, "test output").unwrap();
   Ok(Object::Number(0.0))
 }
