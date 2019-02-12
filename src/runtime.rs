@@ -51,14 +51,24 @@ impl Error for RuntimeError {
 enum SymbolVal {
   Function(Vec<String>, Meta<Stmt>),
   StdLib(String),
-  // Object(Box<Fn(dyn HashMap<String, Object>) -> Object>),
   Object(Object),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SymbolEntry {
+pub struct VarEntry {
   name: String,
   value: SymbolVal,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionEntry {
+  return_val: Option<Object>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SymbolEntry {
+  Variable(VarEntry),
+  Function(FunctionEntry),
 }
 
 pub struct Runtime {
@@ -147,7 +157,19 @@ impl Runtime {
   }
 
   fn handle_return(&mut self, expr: &Meta<Expr>) -> Result<(), RuntimeError> {
-    println!("Returning: {:?}", self.run_expr(&expr)?);
+    let return_val = self.run_expr(expr)?;
+
+    for table in self.symbol_table.iter_mut().rev() {
+      if let Some(SymbolEntry::Function(_)) = table.get(CURRENT_FUNCTION_CALL_KEY) {
+        table.insert(
+          CURRENT_FUNCTION_CALL_KEY.to_string(),
+          SymbolEntry::Function(FunctionEntry {
+            return_val: Some(return_val),
+          }),
+        );
+        break;
+      }
+    }
     Ok(())
   }
 
@@ -161,10 +183,10 @@ impl Runtime {
     if let Some(table_for_scope) = self.symbol_table.last_mut() {
       table_for_scope.insert(
         identifier.clone(),
-        SymbolEntry {
+        SymbolEntry::Variable(VarEntry {
           name: identifier.clone(),
           value: SymbolVal::Object(val),
-        },
+        }),
       );
     }
     Ok(())
@@ -179,10 +201,10 @@ impl Runtime {
     if let Some(table_for_scope) = self.symbol_table.last_mut() {
       table_for_scope.insert(
         identifier.clone(),
-        SymbolEntry {
+        SymbolEntry::Variable(VarEntry {
           name: identifier.clone(),
           value: SymbolVal::Function(params.clone(), stmt.clone()),
-        },
+        }),
       );
     }
     Ok(())
@@ -240,9 +262,19 @@ impl Runtime {
     identifier: String,
     exprs: &Vec<Meta<Expr>>,
   ) -> Result<Object, RuntimeError> {
-    let result = if let Some(var) = get_var(&identifier, &self.symbol_table.clone()) {
+    if let Some(var) = get_var(&identifier, &self.symbol_table.clone()) {
       match var.value {
         SymbolVal::Function(ref params, ref stmt) => {
+          // add new scope level for function call
+          let mut symbol_entry = HashMap::new();
+          symbol_entry.insert(
+            CURRENT_FUNCTION_CALL_KEY.to_string(),
+            SymbolEntry::Function(FunctionEntry {
+              return_val: Some(Object::Number(3.14)),
+            }),
+          );
+          self.symbol_table.push(symbol_entry);
+
           // load params into symbol table
           for (i, expr) in exprs.iter().enumerate() {
             let param_name = params.get(i).unwrap().to_string(); // TODO: check error
@@ -250,15 +282,23 @@ impl Runtime {
             if let Some(table_for_scope) = self.symbol_table.last_mut() {
               table_for_scope.insert(
                 param_name.clone(),
-                SymbolEntry {
+                SymbolEntry::Variable(VarEntry {
                   name: param_name.clone(),
                   value: SymbolVal::Object(expr_val),
-                },
+                }),
               );
             }
           }
           self.run_stmt(stmt)?; // TODO: get return val
-          Ok(Object::Number(0.0))
+
+          // TODO: handle unwrap, means return never called if None
+          let return_val = get_function(CURRENT_FUNCTION_CALL_KEY, &self.symbol_table)
+            .unwrap()
+            .clone()
+            .return_val
+            .unwrap();
+          self.symbol_table.pop();
+          Ok(return_val)
         }
         SymbolVal::StdLib(ref name) => {
           let mut evaled_args = vec![];
@@ -274,8 +314,7 @@ impl Runtime {
         format!("Couldn't find function with name: {}", identifier),
         None,
       )
-    };
-    result
+    }
   }
 
   fn handle_identifier(&mut self, expr: &Meta<Expr>, name: &str) -> Result<Object, RuntimeError> {
@@ -324,10 +363,10 @@ impl Runtime {
     for std_lib_function in self.std_lib_functions.clone() {
       toplevel.insert(
         std_lib_function.to_string(),
-        SymbolEntry {
+        SymbolEntry::Variable(VarEntry {
           name: std_lib_function.to_string(),
           value: SymbolVal::StdLib(std_lib_function.to_string()),
-        },
+        }),
       );
     }
   }
@@ -346,10 +385,22 @@ impl Runtime {
 fn get_var<'a>(
   var_name: &str,
   symbol_table: &'a Vec<HashMap<String, SymbolEntry>>,
-) -> Option<&'a SymbolEntry> {
+) -> Option<&'a VarEntry> {
   for table in symbol_table.iter().rev() {
-    if let Some(symbol_entry) = table.get(var_name) {
-      return Some(symbol_entry);
+    if let Some(SymbolEntry::Variable(var)) = table.get(var_name) {
+      return Some(var);
+    }
+  }
+  None
+}
+
+fn get_function<'a>(
+  func_name: &str,
+  symbol_table: &'a Vec<HashMap<String, SymbolEntry>>,
+) -> Option<&'a FunctionEntry> {
+  for table in symbol_table.iter().rev() {
+    if let Some(SymbolEntry::Function(func)) = table.get(func_name) {
+      return Some(func);
     }
   }
   None
