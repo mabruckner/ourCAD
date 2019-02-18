@@ -5,6 +5,8 @@ extern crate serde_derive;
 extern crate clap;
 extern crate serde;
 extern crate serde_json;
+#[macro_use]
+extern crate lazy_static;
 
 #[cfg(feature = "display")]
 extern crate kiss3d;

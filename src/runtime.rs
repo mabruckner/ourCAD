@@ -10,6 +10,21 @@ use stdlib;
 
 const CURRENT_FUNCTION_CALL_KEY: &'static str = "___CURRENT_FUNCTION_CALL";
 
+lazy_static! {
+  // Note: these need to be hooked up to the actual definitions in
+  // stdlib.rs in Runtime.run_stdlib_function()
+  static ref STD_LIB_FUNCTIONS: Vec<&'static str> = vec![
+    "print",
+    "Box",
+    "Plane",
+    "move",
+    "difference",
+    "rotate_x",
+    "display",
+    "write_stl",
+  ];
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Object {
   Number(f64),
@@ -75,7 +90,6 @@ pub enum SymbolEntry {
 
 pub struct Runtime {
   symbol_table: Vec<HashMap<String, SymbolEntry>>,
-  std_lib_functions: Vec<&'static str>,
   source_code: String,
   stdout: Box<Write>,
 }
@@ -84,16 +98,6 @@ impl Runtime {
   pub fn new(source_code: String, stdout: Option<Box<Write>>) -> Runtime {
     Runtime {
       symbol_table: vec![HashMap::new()],
-      std_lib_functions: vec![
-        "print",
-        "Box",
-        "Plane",
-        "move",
-        "difference",
-        "rotate_x",
-        "display",
-        "write_stl",
-      ],
       source_code: source_code,
       stdout: stdout.unwrap_or(Box::new(io::stdout()) as Box<Write>),
     }
@@ -378,7 +382,7 @@ impl Runtime {
 
   fn add_stdlib(&mut self) {
     let toplevel = self.symbol_table.get_mut(0).unwrap();
-    for std_lib_function in self.std_lib_functions.clone() {
+    for std_lib_function in STD_LIB_FUNCTIONS.iter() {
       toplevel.insert(
         std_lib_function.to_string(),
         SymbolEntry::Variable(VarEntry {
