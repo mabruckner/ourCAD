@@ -213,7 +213,9 @@ impl Runtime {
     match expr.inside {
       Expr::Binary(ref op, ref e1, ref e2) => self.handle_binary(op, e1, e2),
       Expr::Unary(ref op, ref e1) => self.handle_unary(op, e1),
-      Expr::FunctionCall(ref name, ref args) => self.handle_function_call(name.to_string(), args),
+      Expr::FunctionCall(ref name, ref args) => {
+        self.handle_function_call(expr, name.to_string(), args)
+      }
       Expr::Identifier(ref name) => self.handle_identifier(expr, name),
       Expr::Number(num) => self.handle_number(Object::Number(num)),
       Expr::Str(ref s) => self.handle_str(Object::Str(s.clone())),
@@ -254,13 +256,14 @@ impl Runtime {
 
   fn handle_function_call(
     &mut self,
+    expr: &Meta<Expr>,
     identifier: String,
     exprs: &Vec<Meta<Expr>>,
   ) -> Result<Object, RuntimeError> {
     if let Some(var) = get_var(&identifier, &self.symbol_table.clone()) {
       match var.value {
         SymbolVal::Function(ref params, ref stmt) => {
-          self.handle_language_function(exprs, params, stmt)
+          self.handle_language_function(expr, exprs, params, stmt)
         }
         SymbolVal::StdLib(ref name) => {
           let mut evaled_args = vec![];
@@ -269,22 +272,33 @@ impl Runtime {
           }
           self.run_stdlib_function(name, evaled_args)
         }
-        SymbolVal::Object(ref object) => Ok(object.clone()),
+        SymbolVal::Object(..) => self.error(
+          format!("Object is not a function: {:?}", identifier),
+          Some(expr.byte_offset),
+        ),
       }
     } else {
       self.error(
         format!("Couldn't find function with name: {}", identifier),
-        None,
+        Some(expr.byte_offset),
       )
     }
   }
 
   fn handle_language_function(
     &mut self,
+    call_expr: &Meta<Expr>,
     exprs: &Vec<Meta<Expr>>,
     params: &Vec<String>,
     stmt: &Meta<Stmt>,
   ) -> Result<Object, RuntimeError> {
+    if exprs.len() != params.len() {
+      return self.error(
+        format!("Number of args doesn't match"),
+        Some(call_expr.byte_offset),
+      );
+    }
+
     // add new scope level for function call
     let mut symbol_entry = HashMap::new();
     symbol_entry.insert(
@@ -312,12 +326,11 @@ impl Runtime {
 
     self.run_stmt(stmt)?;
 
-    // TODO: handle unwrap, means return never called if None
     let return_val = get_function(CURRENT_FUNCTION_CALL_KEY, &self.symbol_table)
       .unwrap()
       .clone()
       .return_val
-      .unwrap();
+      .unwrap_or(Object::Number(0.0));
     self.symbol_table.pop();
     Ok(return_val)
   }
