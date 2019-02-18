@@ -4,6 +4,8 @@ use solid::{Edge, Face, Plane, Point, Solid, Vector};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use std::io;
+use std::io::Write;
 use stdlib;
 
 const CURRENT_FUNCTION_CALL_KEY: &'static str = "___CURRENT_FUNCTION_CALL";
@@ -75,10 +77,11 @@ pub struct Runtime {
   symbol_table: Vec<HashMap<String, SymbolEntry>>,
   std_lib_functions: Vec<&'static str>,
   source_code: String,
+  stdout: Box<Write>,
 }
 
 impl Runtime {
-  pub fn new(source_code: String) -> Runtime {
+  pub fn new(source_code: String, stdout: Option<Box<Write>>) -> Runtime {
     Runtime {
       symbol_table: vec![HashMap::new()],
       std_lib_functions: vec![
@@ -92,6 +95,7 @@ impl Runtime {
         "write_stl",
       ],
       source_code: source_code,
+      stdout: stdout.unwrap_or(Box::new(io::stdout()) as Box<Write>),
     }
   }
 
@@ -126,23 +130,17 @@ impl Runtime {
     inc: &Meta<Stmt>,
     body: &Meta<Stmt>,
   ) -> Result<(), RuntimeError> {
-    self.symbol_table.push(HashMap::new());
     self.run_stmt(assign)?;
     while get_number(self.run_expr(cond)?)? > 0.0 {
-      self.symbol_table.push(HashMap::new());
       self.run_stmt(body)?;
-      self.symbol_table.pop();
       self.run_stmt(inc)?;
     }
-    self.symbol_table.pop();
     Ok(())
   }
 
   fn handle_if(&mut self, cond: &Meta<Expr>, body: &Meta<Stmt>) -> Result<(), RuntimeError> {
     if get_number(self.run_expr(cond)?)? > 0.0 {
-      self.symbol_table.push(HashMap::new());
       self.run_stmt(body)?;
-      self.symbol_table.pop();
     }
     Ok(())
   }
@@ -159,6 +157,7 @@ impl Runtime {
   fn handle_return(&mut self, expr: &Meta<Expr>) -> Result<(), RuntimeError> {
     let return_val = self.run_expr(expr)?;
 
+    // insert return val in closest function call
     for table in self.symbol_table.iter_mut().rev() {
       if let Some(SymbolEntry::Function(_)) = table.get(CURRENT_FUNCTION_CALL_KEY) {
         table.insert(
@@ -218,10 +217,6 @@ impl Runtime {
       Expr::Identifier(ref name) => self.handle_identifier(expr, name),
       Expr::Number(num) => self.handle_number(Object::Number(num)),
       Expr::Str(ref s) => self.handle_str(Object::Str(s.clone())),
-      _ => self.error(
-        format!("Couldn't handle expr: {:?}", expr),
-        Some(expr.byte_offset),
-      ),
     }
   }
 
@@ -314,7 +309,8 @@ impl Runtime {
         );
       }
     }
-    self.run_stmt(stmt)?; // TODO: get return val
+
+    self.run_stmt(stmt)?;
 
     // TODO: handle unwrap, means return never called if None
     let return_val = get_function(CURRENT_FUNCTION_CALL_KEY, &self.symbol_table)
@@ -347,12 +343,12 @@ impl Runtime {
   }
 
   fn run_stdlib_function(
-    &self,
+    &mut self,
     function_name: &str,
     args: Vec<Object>,
   ) -> Result<Object, RuntimeError> {
     match function_name {
-      "print" => stdlib::std_print(args),
+      "print" => stdlib::std_print(&mut self.stdout, args),
       "Box" => stdlib::std_make_box(args),
       "Plane" => stdlib::std_make_plane(args),
       "move" => stdlib::std_move(args),

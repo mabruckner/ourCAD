@@ -71,7 +71,9 @@ fn main() {
     .join("\n");
 
   if let Some(ast) = parser::parse::parse_program(&program_string) {
-    runtime::Runtime::new(program_string).run(&ast).unwrap();
+    runtime::Runtime::new(program_string, None)
+      .run(&ast)
+      .unwrap();
   }
   // println!("{:?}", Solid::make_box([2.0, 2.0, 2.0]));
 }

@@ -5,10 +5,11 @@ use format::write_stl;
 use runtime::{get_number, get_solid, get_str, Object, RuntimeError};
 use solid::{Plane, Point, Solid, Transform, Vector};
 use std::fs::File;
+use std::io::Write;
 
-pub fn std_print(args: Vec<Object>) -> Result<Object, RuntimeError> {
+pub fn std_print(writer: &mut Box<Write>, args: Vec<Object>) -> Result<Object, RuntimeError> {
   if let Some(arg) = args.get(0) {
-    println!("{:?}", arg);
+    write!(writer, "{:?}", arg);
   } else {
     println!("Error: no arg");
   }
