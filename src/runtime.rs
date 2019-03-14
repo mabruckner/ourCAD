@@ -35,6 +35,7 @@ pub enum Object {
   Face(Face),
   Vector(Vector),
   Solid(Solid),
+  List(Vec<Object>),
 }
 
 #[derive(Debug, Clone)]
@@ -223,6 +224,7 @@ impl Runtime {
       Expr::Identifier(ref name) => self.handle_identifier(expr, name),
       Expr::Number(num) => self.handle_number(Object::Number(num)),
       Expr::Str(ref s) => self.handle_str(Object::Str(s.clone())),
+      Expr::List(ref l) => self.handle_list(l),
     }
   }
 
@@ -357,6 +359,15 @@ impl Runtime {
 
   fn handle_str(&mut self, s: Object) -> Result<Object, RuntimeError> {
     Ok(s)
+  }
+
+  fn handle_list(&mut self, l: &Vec<Meta<Expr>>) -> Result<Object, RuntimeError> {
+    let mut evaled_exprs = vec![];
+    for ref expr in l {
+      evaled_exprs.push(self.run_expr(expr)?);
+    }
+
+    Ok(Object::List(evaled_exprs))
   }
 
   fn run_stdlib_function(

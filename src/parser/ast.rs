@@ -23,6 +23,7 @@ pub enum Expr {
   Str(String),
   Identifier(String),
   FunctionCall(String, Vec<Meta<Expr>>),
+  List(Vec<Meta<Expr>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

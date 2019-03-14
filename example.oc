@@ -5,8 +5,10 @@ fn make_box(width) {
 }
 
 box0 = make_box(2);
-print(box0);
 
 box = Box(10, 10, 10);
 to_subtract = Box(5, 5, 5);
 box_with_hole = difference(box, to_subtract);
+
+l = [1, 2.5, "foo", box];
+print(l);

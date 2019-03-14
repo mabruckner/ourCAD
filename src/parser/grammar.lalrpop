@@ -50,6 +50,7 @@ pub RootExpr: Meta<Expr> = {
     <l:@L> <s: String> => Meta::new(Expr::Str(s), l),
     <l:@L> <i: Identifier> => Meta::new(Expr::Identifier(i), l),
     <l:@L> <i: Identifier> "(" <is: Comma<Expr>> ")" => Meta::new(Expr::FunctionCall(i, is), l),
+    <l:@L> "[" <is: Comma<Expr>> "]" => Meta::new(Expr::List(is), l),
     "(" <Expr> ")" => <>,
 }
 
