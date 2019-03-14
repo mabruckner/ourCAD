@@ -7,9 +7,18 @@ use solid::{Plane, Point, Solid, Transform, Vector};
 use std::fs::File;
 use std::io::Write;
 
+fn get_str_rep(obj: &Object) -> String {
+  match obj {
+    Object::Number(n) => format!("{}", n.to_string()),
+    Object::Str(s) => format!("{}", s),
+    Object::List(l) => format!("{:?}", l.iter().map(get_str_rep).collect::<Vec<String>>()),
+    _ => format!("{:?}", obj),
+  }
+}
+
 pub fn std_print(writer: &mut Box<Write>, args: Vec<Object>) -> Result<Object, RuntimeError> {
   if let Some(arg) = args.get(0) {
-    write!(writer, "{:?}", arg);
+    write!(writer, "{}\n", get_str_rep(arg));
   } else {
     println!("Error: no arg");
   }

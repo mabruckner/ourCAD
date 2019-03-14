@@ -12,3 +12,5 @@ box_with_hole = difference(box, to_subtract);
 
 l = [1, 2.5, "foo", box];
 print(l);
+print("Num:");
+print(1.5);
