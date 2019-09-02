@@ -12,7 +12,7 @@ const CURRENT_FUNCTION_CALL_KEY: &'static str = "___CURRENT_FUNCTION_CALL";
 
 lazy_static! {
   // Note: these need to be hooked up to the actual definitions in
-  // stdlib.rs in Runtime.run_stdlib_function()
+  // stdlib.rs in Runtime.run_stdlib_function_call()
   static ref STD_LIB_FUNCTIONS: Vec<&'static str> = vec![
     "print",
     "Box",
@@ -60,7 +60,7 @@ impl Error for RuntimeError {
     self.msg.as_str()
   }
 
-  fn cause(&self) -> Option<&Error> {
+  fn cause(&self) -> Option<&dyn Error> {
     None
   }
 }
@@ -92,18 +92,19 @@ pub enum SymbolEntry {
 pub struct Runtime {
   symbol_table: Vec<HashMap<String, SymbolEntry>>,
   source_code: String,
-  stdout: Box<Write>,
+  stdout: Box<dyn Write>,
 }
 
 impl Runtime {
-  pub fn new(source_code: String, stdout: Option<Box<Write>>) -> Runtime {
+  pub fn new(source_code: String, stdout: Option<Box<dyn Write>>) -> Runtime {
     Runtime {
       symbol_table: vec![HashMap::new()],
       source_code: source_code,
-      stdout: stdout.unwrap_or(Box::new(io::stdout()) as Box<Write>),
+      stdout: stdout.unwrap_or(Box::new(io::stdout()) as Box<dyn Write>),
     }
   }
 
+  // Runs a program
   pub fn run(&mut self, program: &Vec<Meta<Stmt>>) -> Result<(), RuntimeError> {
     self.add_stdlib();
     for stmt in program {
@@ -112,6 +113,7 @@ impl Runtime {
     Ok(())
   }
 
+  // Runs any AST statement
   fn run_stmt(&mut self, stmt: &Meta<Stmt>) -> Result<(), RuntimeError> {
     match stmt.inside {
       Stmt::Block(ref stmts) => self.handle_block(stmts),
@@ -119,7 +121,7 @@ impl Runtime {
       Stmt::Expr(ref expr) => self.handle_expr(expr),
       Stmt::Assign(ref identifier, ref expr) => self.handle_assign(identifier.to_string(), expr),
       Stmt::Function(ref identifier, ref params, ref stmt) => {
-        self.handle_function(identifier.to_string(), params, stmt)
+        self.handle_function_declaration(identifier.to_string(), params, stmt)
       }
       Stmt::For(ref assign, ref condition, ref inc, ref body) => {
         self.handle_for(assign, condition, inc, body)
@@ -128,6 +130,7 @@ impl Runtime {
     }
   }
 
+  // Runs an AST for loop
   fn handle_for(
     &mut self,
     assign: &Meta<Stmt>,
@@ -143,6 +146,7 @@ impl Runtime {
     Ok(())
   }
 
+  // Runs an AST if statement
   fn handle_if(&mut self, cond: &Meta<Expr>, body: &Meta<Stmt>) -> Result<(), RuntimeError> {
     if get_number(self.run_expr(cond)?)? > 0.0 {
       self.run_stmt(body)?;
@@ -150,6 +154,7 @@ impl Runtime {
     Ok(())
   }
 
+  // Processes an AST block, running any statements within
   fn handle_block(&mut self, stmts: &Vec<Meta<Stmt>>) -> Result<(), RuntimeError> {
     self.symbol_table.push(HashMap::new());
     for stmt in stmts {
@@ -159,6 +164,8 @@ impl Runtime {
     Ok(())
   }
 
+  // Runs an AST return statement, inserting the value into the symbol table
+  // as the function return
   fn handle_return(&mut self, expr: &Meta<Expr>) -> Result<(), RuntimeError> {
     let return_val = self.run_expr(expr)?;
 
@@ -177,11 +184,13 @@ impl Runtime {
     Ok(())
   }
 
+  // Runs an AST expr statement
   fn handle_expr(&mut self, expr: &Meta<Expr>) -> Result<(), RuntimeError> {
     self.run_expr(&expr)?;
     Ok(())
   }
 
+  // Processes an AST assignment statement
   fn handle_assign(&mut self, identifier: String, expr: &Meta<Expr>) -> Result<(), RuntimeError> {
     let val = self.run_expr(&expr)?;
     if let Some(table_for_scope) = self.symbol_table.last_mut() {
@@ -196,7 +205,8 @@ impl Runtime {
     Ok(())
   }
 
-  fn handle_function(
+  // Processes an AST function declaration
+  fn handle_function_declaration(
     &mut self,
     identifier: String,
     params: &Vec<String>,
@@ -214,6 +224,7 @@ impl Runtime {
     Ok(())
   }
 
+  // Runs an AST expr
   fn run_expr(&mut self, expr: &Meta<Expr>) -> Result<Object, RuntimeError> {
     match expr.inside {
       Expr::Binary(ref op, ref e1, ref e2) => self.handle_binary(op, e1, e2),
@@ -228,6 +239,7 @@ impl Runtime {
     }
   }
 
+  // Processes an AST binary operator
   fn handle_binary(
     &mut self,
     operator: &Operator,
@@ -247,6 +259,7 @@ impl Runtime {
     Ok(Object::Number(result))
   }
 
+  // Processes an AST unary operator
   fn handle_unary(
     &mut self,
     operator: &Operator,
@@ -260,6 +273,8 @@ impl Runtime {
     Ok(Object::Number(result))
   }
 
+  // Processes and runs a function call (may be a stdlib function call
+  // or a function defined in source code)
   fn handle_function_call(
     &mut self,
     expr: &Meta<Expr>,
@@ -269,14 +284,14 @@ impl Runtime {
     if let Some(var) = get_var(&identifier, &self.symbol_table.clone()) {
       match var.value {
         SymbolVal::Function(ref params, ref stmt) => {
-          self.handle_language_function(expr, exprs, params, stmt)
+          self.handle_language_function_call(expr, exprs, params, stmt)
         }
         SymbolVal::StdLib(ref name) => {
           let mut evaled_args = vec![];
           for expr in exprs {
             evaled_args.push(self.run_expr(expr)?);
           }
-          self.run_stdlib_function(name, evaled_args)
+          self.run_stdlib_function_call(name, evaled_args)
         }
         SymbolVal::Object(..) => self.error(
           format!("Object is not a function: {:?}", identifier),
@@ -291,7 +306,9 @@ impl Runtime {
     }
   }
 
-  fn handle_language_function(
+  // Runs a function defined in code (as opposed to stdlib) and returns
+  // the result as an Object
+  fn handle_language_function_call(
     &mut self,
     call_expr: &Meta<Expr>,
     exprs: &Vec<Meta<Expr>>,
@@ -300,7 +317,7 @@ impl Runtime {
   ) -> Result<Object, RuntimeError> {
     if exprs.len() != params.len() {
       return self.error(
-        format!("Number of args doesn't match"),
+        format!("Number of expr args doesn't match number of params"),
         Some(call_expr.byte_offset),
       );
     }
@@ -341,6 +358,7 @@ impl Runtime {
     Ok(return_val)
   }
 
+  // Processes an AST identifier
   fn handle_identifier(&mut self, expr: &Meta<Expr>, name: &str) -> Result<Object, RuntimeError> {
     if let Some(var) = get_var(name, &self.symbol_table) {
       if let SymbolVal::Object(ref obj) = var.value {
@@ -353,14 +371,17 @@ impl Runtime {
     )
   }
 
+  // Processes an AST number
   fn handle_number(&mut self, num: Object) -> Result<Object, RuntimeError> {
     Ok(num)
   }
 
+  // Processes an AST str
   fn handle_str(&mut self, s: Object) -> Result<Object, RuntimeError> {
     Ok(s)
   }
 
+  // Processes an AST list
   fn handle_list(&mut self, l: &Vec<Meta<Expr>>) -> Result<Object, RuntimeError> {
     let mut evaled_exprs = vec![];
     for ref expr in l {
@@ -370,7 +391,8 @@ impl Runtime {
     Ok(Object::List(evaled_exprs))
   }
 
-  fn run_stdlib_function(
+  // Runs a stdlib functions and returns the result as an Object
+  fn run_stdlib_function_call(
     &mut self,
     function_name: &str,
     args: Vec<Object>,
@@ -391,6 +413,8 @@ impl Runtime {
     }
   }
 
+  // Inserts stdlib functions into the top level of the
+  // symbol table
   fn add_stdlib(&mut self) {
     let toplevel = self.symbol_table.get_mut(0).unwrap();
     for std_lib_function in STD_LIB_FUNCTIONS.iter() {
@@ -404,6 +428,7 @@ impl Runtime {
     }
   }
 
+  // Generates a runtime error specifying the line number in the source code
   fn error(&self, msg: String, byte_offset: Option<usize>) -> Result<Object, RuntimeError> {
     let msg = if let Some(byte_offset) = byte_offset {
       let line = get_line_number(&self.source_code, byte_offset);
@@ -415,6 +440,8 @@ impl Runtime {
   }
 }
 
+// Searches a symbol table for a variable matching the
+// given name
 fn get_var<'a>(
   var_name: &str,
   symbol_table: &'a Vec<HashMap<String, SymbolEntry>>,
@@ -427,6 +454,8 @@ fn get_var<'a>(
   None
 }
 
+// Searches a symbol table for a function matching the
+// given name
 fn get_function<'a>(
   func_name: &str,
   symbol_table: &'a Vec<HashMap<String, SymbolEntry>>,
@@ -439,6 +468,7 @@ fn get_function<'a>(
   None
 }
 
+// Extracts a number from an Object
 pub fn get_number(object: Object) -> Result<f64, RuntimeError> {
   if let Object::Number(num) = object {
     Ok(num)
@@ -450,6 +480,7 @@ pub fn get_number(object: Object) -> Result<f64, RuntimeError> {
   }
 }
 
+// Extracts a solid from an Object
 pub fn get_solid(object: Object) -> Result<Solid, RuntimeError> {
   if let Object::Solid(solid) = object {
     Ok(solid)
@@ -461,6 +492,7 @@ pub fn get_solid(object: Object) -> Result<Solid, RuntimeError> {
   }
 }
 
+// Extracts a str from an Object
 pub fn get_str(object: Object) -> Result<String, RuntimeError> {
   if let Object::Str(solid) = object {
     Ok(solid)
