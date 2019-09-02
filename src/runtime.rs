@@ -11,7 +11,7 @@ use stdlib;
 const CURRENT_FUNCTION_CALL_KEY: &'static str = "___CURRENT_FUNCTION_CALL";
 
 lazy_static! {
-  // Note: these need to be hooked up to the actual definitions in
+  // Note: these need to be hooked up to the actual definitions from
   // stdlib.rs in Runtime.run_stdlib_function_call()
   static ref STD_LIB_FUNCTIONS: Vec<&'static str> = vec![
     "print",
